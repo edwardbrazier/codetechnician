@@ -23,9 +23,9 @@ import yaml
 from pathlib import Path
 from typing import List
 
-from claudecli import constants
-from claudecli.printing import console
-from claudecli.codebase_watcher import Codebase, CodebaseState
+from codetechnician import constants
+from codetechnician.printing import console
+from codetechnician.codebase_watcher import Codebase, CodebaseState
 
 
 def load_config(config_file: str) -> dict:  # type: ignore

@@ -4,7 +4,7 @@ This module is for detecting changes to a codebase and updating the program's re
 from typing import List, Set, NamedTuple
 import os
 
-from claudecli.printing import console
+from codetechnician.printing import console
 
 FilePath = str
 CodebaseLocation = str # A CodebaseLocation can be either a file or a folder.

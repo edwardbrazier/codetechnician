@@ -6,14 +6,14 @@ from typing import Optional
 import anthropic
 import requests
 
-from claudecli.parseaicode import (
+from codetechnician.parseaicode import (
     parse_ai_responses,
     CodeResponse,
     ChatResponse,
     Usage,
     sum_usages,
 )
-from claudecli.printing import console
+from codetechnician.printing import console
 
 
 def setup_client(api_key: str) -> anthropic.Client:

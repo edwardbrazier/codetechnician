@@ -11,11 +11,11 @@ import sys
 from prompt_toolkit import PromptSession
 from typing import Optional
 
-from claudecli.ai_functions import setup_client
-from claudecli.interact import *
-from claudecli import constants
-from claudecli.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
-from claudecli.codebase_watcher import Codebase, amend_codebase_records
+from codetechnician.ai_functions_openai import setup_client
+from codetechnician.interact import *
+from codetechnician import constants
+from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
+from codetechnician.codebase_watcher import Codebase, amend_codebase_records
 
 
 @click.command()
@@ -42,7 +42,7 @@ from claudecli.codebase_watcher import Codebase, amend_codebase_records
     "-m",
     "--model",
     "model",
-    help="Set the model. In ascending order of capability, the options are: 'haiku', 'sonnet', 'opus'",
+    help="Set the model. In ascending order of capability, the Claude options are: 'haiku', 'sonnet', 'opus'. GPT models are also supported, such as 'gpt-4o'",
     required=False,
 )
 @click.option(
@@ -78,8 +78,8 @@ from claudecli.codebase_watcher import Codebase, amend_codebase_records
     type=click.Path(exists=True),
     help="""
     Path to the file containing the Coder System Prompt. 
-    Defaults to '~/.claudecli_coder_system_prompt.txt'. 
-    This is additional to a hardcoded coder system prompt which tells Claude how to format its output in XML when it is asked to write code into some files.""",
+    Defaults to '~/.codetechnician_coder_system_prompt.txt'. 
+    This is additional to a hardcoded coder system prompt which tells the AI how to format its output in XML when it is asked to write code into some files.""",
     required=False,
 )
 @click.option(
@@ -89,10 +89,10 @@ from claudecli.codebase_watcher import Codebase, amend_codebase_records
     type=click.Path(exists=True),
     help="""
     Path to the file containing the General System Prompt, used when asking for chat-style responses. 
-    Defaults to '~/.claudecli_general_system_prompt.txt'.""",
+    Defaults to '~/.codetechnician_general_system_prompt.txt'.""",
     required=False,
 )
-@click.version_option(version=constants.VERSION, prog_name='claudecli')
+@click.version_option(version=constants.VERSION, prog_name='codetechnician')
 def main(
     sources: list[str],
     model: Optional[str],
@@ -104,22 +104,22 @@ def main(
     general_system_prompt: Optional[str],
 ) -> None:
     """
-    Command-line interface to the Anthropic Claude AI.
+    Command-line interface to AIs for programming.
     Supports chat conversations.
-    Also supports code output from Claude to multiple files at once.
+    Also supports code output from the AI to multiple files at once.
 
     Write '/q' to end the chat.\n
-    Write '/o <instructions>' to ask Claude for code, which the application will output to the selected output directory.
-    '<instructions>' represents your instructions to Claude.
+    Write '/o <instructions>' to ask the AI for code, which the application will output to the selected output directory.
+    '<instructions>' represents your instructions to the AI.
     For example:\n
     >>> /o improve the commenting in load.py\n
-    Write '/p <instructions>' to render Claude's response as plain text.
-    (This is a workaround in case Claude outputs malformed Markdown.)
+    Write '/p <instructions>' to render the AI's response as plain text.
+    (This is a workaround in case the AI outputs malformed Markdown.)
     Write '/u' to check for changes in the watched codebases and prepend the contents of added or modified files to the next message. 
     (At the moment this only works if there is a single codebase.)
     """
 
-    console.print("[bold]ClaudeCLI[/bold]")
+    console.print("[bold]CodeTechnician[/bold]")
 
     if multiline:
         session: PromptSession[str] = PromptSession(multiline=True)  # type: ignore
@@ -148,18 +148,21 @@ def main(
 
     # If the config specifies a model and the command line parameters do not specify a model, then
     # use the one from the config file.
-    if model:
+    # if model:
         # First check whether the provided model is valid
-        if model not in model_mapping:
-            console.print(f"[red bold]Invalid model: {model}[/red bold]")
-            sys.exit(1)
-        else:
-            model_notnone: str = model_mapping.get(model.lower(), model)
-            config["anthropic_model"] = model_notnone
-    elif "anthropic_model" not in config:
-        config["anthropic_model"] = constants.haiku
+        # if model not in model_mapping:
+        #     console.print(f"[red bold]Invalid model: {model}[/red bold]")
+        #     sys.exit(1)
+        # else:
+            # model_notnone: str = model_mapping.get(model.lower(), model)
+    
+    model_notnone: str = "gpt-4o"
+    config["model"] = model_notnone
 
-    console.print(f"Model in use: [green bold]{config['anthropic_model']}[/green bold]")
+    # elif "model" not in config:
+        # config["model"] = constants.haiku
+
+    console.print(f"Model in use: [green bold]{config['model']}[/green bold]")
 
     codebases: list[Codebase] = []
     codebase_initial_contents: str = ""
@@ -208,11 +211,11 @@ def main(
 
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(
-            "~/.claudecli_coder_system_prompt.txt"
+            "~/.codetechnician_coder_system_prompt.txt"
         )
     if general_system_prompt is None:
         general_system_prompt = os.path.expanduser(
-            "~/.claudecli_general_system_prompt.txt"
+            "~/.codetechnician_general_system_prompt.txt"
         )
 
     console.line()

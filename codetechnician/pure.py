@@ -2,8 +2,8 @@
 Utility functions for working with strings, files, and calculating expenses.
 """
 
-from claudecli.parseaicode import Usage
-from claudecli.constants import opus, sonnet, haiku
+from codetechnician.parseaicode import Usage
+from codetechnician.constants import opus, sonnet, haiku
 
 
 def get_size(contents: str) -> str:

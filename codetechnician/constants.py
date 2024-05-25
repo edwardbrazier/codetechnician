@@ -1,6 +1,6 @@
 #!/bin/env python
 """
-This module contains configuration settings and utility functions for the Claude CLI.
+This module contains configuration settings and utility functions.
 """
 
 from pathlib import Path
@@ -13,7 +13,7 @@ Address = Tuple[str, int]
 Server = Tuple[Address, ConnectionOptions]
 
 # Define paths for configuration and history files
-BASE = Path(xdg_config_home(), "claudecli")
+BASE = Path(xdg_config_home(), "codetechnician")
 CONFIG_FILE = BASE / "config.yaml"
 ENV_VAR_ANTHROPIC = "ANTHROPIC_API_KEY"
 

@@ -13,13 +13,13 @@ from prompt_toolkit import HTML, PromptSession
 from typing import Optional, Union
 from rich.logging import RichHandler
 
-from claudecli.printing import print_markdown, console
-from claudecli.constants import coder_system_prompt_hardcoded
-from claudecli import save
-from claudecli.ai_functions import gather_ai_code_responses, prompt_ai
-from claudecli.parseaicode import CodeResponse
-from claudecli.pure import format_cost
-from claudecli.codebase_watcher import (
+from codetechnician.printing import print_markdown, console
+from codetechnician.constants import coder_system_prompt_hardcoded
+from codetechnician import save
+from codetechnician.ai_functions_openai import gather_ai_code_responses, prompt_ai
+from codetechnician.parseaicode import CodeResponse
+from codetechnician.pure import format_cost
+from codetechnician.codebase_watcher import (
     Codebase,
     CodebaseUpdates,
     CodebaseState,
@@ -105,7 +105,7 @@ def prompt_user(
     else:
         context_data: str = ""
 
-    model: str = config["anthropic_model"]  # type: ignore
+    model: str = config["model"]  # type: ignore
 
     if config["non_interactive"]:
         user_entry = sys.stdin.read()
@@ -187,7 +187,7 @@ def prompt_user(
                 {"role": "assistant", "content": response_content.content_string}
             ]
 
-            console.print(format_cost(response_content.usage, model))  # type: ignore
+            # console.print(format_cost(response_content.usage, model))  # type: ignore
 
             return conversation_contents
     else:
@@ -213,6 +213,6 @@ def prompt_user(
 
             response_string = chat_response_optional.content_string
             usage = chat_response_optional.usage
-            console.print(format_cost(usage, model))  # type: ignore
+            # console.print(format_cost(usage, model))  # type: ignore
             chat_history = messages + [{"role": "assistant", "content": response_string}]
             return chat_history

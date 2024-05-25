@@ -3,12 +3,12 @@ requires = ["setuptools>=42", "xdg-base-dirs~=6.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "claudecli"
-version = "0.1.0"
+name = "codetechnician"
+version = "0.0.1"
 authors = [
     { name = "Edward Brazier", email = "edwardbrazier.coauthor382@aleeas.com" }
 ]
-description = "Command-line interface for using Claude to write code."
+description = "Command-line interface for using AIs to write code."
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["scripts", "dependencies"]
