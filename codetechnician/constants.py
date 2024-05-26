@@ -202,7 +202,7 @@ Here is the updated code with exception handling for parsing the XML response:
 # ... (existing code) ...
 
 import xml.etree.ElementTree as ET
-from parseaicode import process_assistant_response, FileData
+from parseaicode_xml import process_assistant_response, FileData
 
 def main(user_prompt: str, \\
          sources: list[str], \\
@@ -239,7 +239,7 @@ def main(user_prompt: str, \\
 
 The key changes are:
 
-1. Imported the `process_assistant_response` function from `parseaicode` module.
+1. Imported the `process_assistant_response` function from `parseaicode_xml` module.
 2. Wrapped the call to `process_assistant_response` in a `try-except` block to catch any `ET.ParseError` exceptions that may occur during XML parsing.
 3. If an exception is caught, a message is printed, and an empty `file_data_list` is used instead.
 
@@ -258,7 +258,7 @@ Instead it should be inside the XML, like this. Notice that nothing comes after 
 # ... (existing code) ...
 
 import xml.etree.ElementTree as ET
-from parseaicode import process_assistant_response, FileData
+from parseaicode_xml import process_assistant_response, FileData
 
 def main(user_prompt: str, \\
          sources: list[str], \\
@@ -293,7 +293,7 @@ def main(user_prompt: str, \\
 <changes>
 The key changes are:
 
-1. Imported the `process_assistant_response` function from `parseaicode` module.
+1. Imported the `process_assistant_response` function from `parseaicode_xml` module.
 2. Wrapped the call to `process_assistant_response` in a `try-except` block to catch any `ET.ParseError` exceptions that may occur during XML parsing.
 3. If an exception is caught, a message is printed, and an empty `file_data_list` is used instead.
 
@@ -396,5 +396,15 @@ Do not output source code for files which you have not modified. Only output sou
 Here is an illustration of the output format that you must use.
 Your output must strictly follow this precise format. 
 
-'{"files": [{"path": "example.py", "content": "print(\"Hello, World!\")", "changes": "Removed some extraneous code."}, {"path": "example2.py", "content": "a=1\nb=2\nprint(f\"{a} + {b} = {a + b}\")", "changes": "Corrected addition of a and b."}]}'
+ONLY OUTPUT JSON.
+
+{"files": [
+    { "path": "example.py", 
+      "content": "print(\"Hello, World!\")", 
+      "changes": "Removed some extraneous code."}, 
+    {"path": "example2.py", 
+     "content": "a=1\nb=2\nprint(f\"{a} + {b} = {a + b}\")", 
+     "changes": "Corrected addition of a and b."}
+  ]
+}
 """

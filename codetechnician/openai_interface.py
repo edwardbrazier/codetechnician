@@ -5,16 +5,19 @@ This module provides functions for interacting with the OpenAI API.
 
 from typing import Optional
 from openai import OpenAI
-import requests
 
-from codetechnician.parseaicode import (
+from codetechnician.process_response_json import (
     parse_ai_responses,
+)
+from codetechnician.printing import console
+
+from codetechnician.ai_response import (
+    ParseFailure,
     CodeResponse,
     ChatResponse,
     Usage,
-    sum_usages,
+    FileData
 )
-from codetechnician.printing import console
 
 
 def setup_client(api_key: str):
@@ -66,7 +69,6 @@ def prompt_ai(
         *messages,
     ]
 
-    # try:
     response = client.chat.completions.create(
         model=model,
         max_tokens=4000,
@@ -141,4 +143,120 @@ def gather_ai_code_responses(
     ), "messages must be a list of dicts with 'role' and 'content' keys"
     assert isinstance(system_prompt, str), "System prompt must be a string"
 
+    responses: list[str] = []
+    concatenated_responses: str = ""
+    usage_tally = Usage(0, 0)
+    max_turns = 10
+    separator = "\n-------------------------------\n"
+
+    for turns in range(max_turns):
+        # The OpenAI API requires that the system prompt be included in the messages list
+        messages_inc_system = \
+            [{"role": "system", "content": system_prompt}] + messages
+
+        print(f"Sending message list: \n{messages_inc_system}")
+
+        # json mode always seems to start from the beginning of the 
+        # json object.
+        response_format: str = "json_object" if turns == 0 else "text"
+
+        response = client.chat.completions.create(
+            model=model,
+            max_tokens=200,
+            temperature=0,
+            messages=messages_inc_system,
+            response_format={"type": response_format}
+        )
+
+        choices = response.choices
+        usage_tally = Usage(
+            response.usage.prompt_tokens, response.usage.completion_tokens
+        )
+
+        content_string: str = ""
+
+        if len(choices) == 0:
+            console.print("Received an empty list of contents blocks.")
+            return None
+        else:
+            content_block = choices[0]
+
+            # Strip trailing whitespace from last message
+            # so that if we pass it back, Anthropic will accept it
+            # as an assistant message.
+            content_string: str = content_block.message.content
+
+            if content_string == "":
+                console.print("Received an empty response string.")
+                return None
+            
+            print(f"Received response: \n{content_string}")
+
+            responses.append(content_string)
+            
+            if content_block.finish_reason == "stop":       
+                parse_result: ParseResult = parse_ai_responses(responses)
+
+                if parse_result == ParseFailure.JSON_INVALID or parse_result == ParseFailure.JSON_SCHEMA_INCORRECT:
+                    console.print("[bold yellow]AI response is not in the right format.[/bold yellow]")
+
+                    return CodeResponse(
+                        content_string=separator.join(responses),
+                        file_data_list=[],
+                        usage=usage_tally,
+                    )
+                elif isinstance(parse_result, list):
+                    # Parsing succeeded
+                    concatenated_responses = separator.join(responses)
+
+                    response_content = CodeResponse(
+                        content_string=concatenated_responses,
+                        file_data_list=parse_result,
+                        usage=usage_tally,
+                    )
+                    return response_content
+            elif content_block.finish_reason == "length":
+                # assume incomplete response and request continuation              
+
+                assistant_message = {  # type: ignore
+                    "role": "assistant",
+                    "content": content_string,
+                }
+                request_continuation = { 
+                    "role": "user",
+                    "content": """
+                    Please carefully look at the previous assistant message.
+                    The previous assistant message was cut off because it reached the token limit.
+                    Please provide a continuation of the previous assistant message,
+                    answering the question from the previous usage message.
+                    Start exactly where the previous assistant message left off.
+                    Only provide the continuation, not the entire previous message 
+                    or any other information.
+                    Only write JSON. Do not write anything other than valid JSON.
+                    """,
+                }
+
+                # The last user message might have just been 'keep going'.
+                # If so, remove it and just add to the last assistant message.
+                if messages[-1] == request_continuation:                    
+                    messages = messages[:-1]
+                    messages[-1]["content"] += content_string
+                    print(f"Amended last assistant message.")
+                else: # last user message was substantive
+
+                # type_of_last_message = messages[-1]["role"]
+
+                # if type_of_last_message == "user":
+                    messages = messages + [assistant_message, request_continuation]
+                    print(f"Added new assistant message.")
+                # else: # last message was assistant
+                #     messages[-1]["content"] += content_string.rstrip()
+                #     # messages = messages + [user_message]
+                #     print(f"Amended last assistant message in message history.")
+                #     print("Requesting more data from the model...")
+    
+    print("Reached turn limit.")
     return None
+
+
+

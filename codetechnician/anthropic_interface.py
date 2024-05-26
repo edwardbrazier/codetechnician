@@ -6,8 +6,10 @@ from typing import Optional
 import anthropic
 import requests
 
-from codetechnician.parseaicode import (
-    parse_ai_responses,
+from codetechnician.parseaicode_xml import (
+    parse_ai_responses
+)
+from codetechnician.ai_response import (
     CodeResponse,
     ChatResponse,
     Usage,

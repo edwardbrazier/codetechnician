@@ -2,7 +2,7 @@
 Utility functions for working with strings, files, and calculating expenses.
 """
 
-from codetechnician.parseaicode import Usage
+from codetechnician.ai_response import Usage
 from codetechnician.constants import opus, sonnet, haiku, gpt_4o, all_models
 
 

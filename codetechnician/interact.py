@@ -23,7 +23,7 @@ from codetechnician.constants import (
 from codetechnician import save
 from codetechnician import openai_interface
 from codetechnician import anthropic_interface
-from codetechnician.parseaicode import CodeResponse, ChatResponse
+from codetechnician.ai_response import CodeResponse, ChatResponse
 from codetechnician.pure import format_cost
 from codetechnician.codebase_watcher import (
     Codebase,
@@ -172,7 +172,6 @@ def prompt_user(
                 + user_instruction
                 + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!",
             },
-            {"role": "assistant", "content": '<?xml version="1.0" encoding="UTF-8"?>'},
         ]
 
         messages = conversation_history + new_messages
@@ -206,7 +205,7 @@ def prompt_user(
 
             return conversation_contents
     else:
-        # User is conversing with AI, not asking for code sent to files.
+        # User is conversing with AI.
         user_prompt: str = user_instruction
 
         new_messages: list[dict[str, str]] = [
