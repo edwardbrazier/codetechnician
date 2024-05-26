@@ -42,7 +42,7 @@ from codetechnician.codebase_watcher import Codebase, amend_codebase_records
     "-m",
     "--model",
     "model",
-    help="Set the model. Options are: 'gpt-4o', 'opus', 'sonnet', 'haiku'. Defaults to haiku, which is the cheapest option.",
+    help="Set the model. Presently, the default and the only supported option is 'gpt-4o'.",
     required=False,
 )
 @click.option(
@@ -133,9 +133,9 @@ def main(
         sys.exit(1)
 
     model_mapping: dict[str, str] = {
-        "opus": constants.opus,
-        "sonnet": constants.sonnet,
-        "haiku": constants.haiku,
+        # "opus": constants.opus,
+        # "sonnet": constants.sonnet,
+        # "haiku": constants.haiku,
         "gpt-4o": constants.gpt_4o,
     }
 
@@ -158,7 +158,7 @@ def main(
             model_long: str = model_mapping.get(model.lower(), model)
             config["model"] = model_long
     elif "model" not in config:
-        config["model"] = constants.haiku
+        config["model"] = constants.gpt_4o
 
     console.print(f"Model in use: [green bold]{config['model']}[/green bold]")
 

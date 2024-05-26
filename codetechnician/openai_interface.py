@@ -154,7 +154,7 @@ def gather_ai_code_responses(
         messages_inc_system = \
             [{"role": "system", "content": system_prompt}] + messages
 
-        print(f"Sending message list: \n{messages_inc_system}")
+        # print(f"Sending message list: \n{messages_inc_system}")
 
         # json mode always seems to start from the beginning of the 
         # json object.
@@ -162,7 +162,7 @@ def gather_ai_code_responses(
 
         response = client.chat.completions.create(
             model=model,
-            max_tokens=200,
+            max_tokens=4096,
             temperature=0,
             messages=messages_inc_system,
             response_format={"type": response_format}
@@ -190,7 +190,7 @@ def gather_ai_code_responses(
                 console.print("Received an empty response string.")
                 return None
             
-            print(f"Received response: \n{content_string}")
+            # print(f"Received response: \n{content_string}")
 
             responses.append(content_string)
             

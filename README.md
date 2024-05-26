@@ -21,7 +21,9 @@ For GPT, go to OpenAI's website. (TODO)
 
 ## Installation and essential configuration
 
-Before you run ClaudeCLI, put your Anthropic API key into the environment variable ANTHROPIC_API_KEY. 
+** As of 26/05/2024, this program only supports GPT-4o. Support for Claude will be added later. See the claudecli repo in the meantime. **
+
+Before you run CodeTechnician, put your Anthropic API key into the environment variable ANTHROPIC_API_KEY. 
 
 There are two ways of running this program:
 1. From the Windows exe file ./dist/codetechnician.exe, which depends on some other files in the repository.
