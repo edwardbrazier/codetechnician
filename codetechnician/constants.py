@@ -19,20 +19,6 @@ ENV_VAR_ANTHROPIC = "ANTHROPIC_API_KEY"
 
 VERSION = "0.0.1"
 
-DEFAULT_CONFIG = {
-    "supplier": "anthropic",
-    "anthropic-api-key": "<INSERT YOUR ANTHROPIC API KEY HERE>",
-    "anthropic_api_url": "https://api.anthropic.com",
-    "model": "claude-3-haiku-20240307",
-    "temperature": 1,
-    "markdown": True,
-    "easy_copy": True,
-    "non_interactive": False,
-    "json_mode": False,
-    "use_proxy": False,
-    "proxy": "socks5://127.0.0.1:2080",
-}
-
 
 opus = "claude-3-opus-20240229"
 sonnet = "claude-3-sonnet-20240229"
@@ -43,6 +29,20 @@ anthropic_models_long = [opus, sonnet, haiku]
 openai_models_long = [gpt_4o]
 
 all_models = anthropic_models_long + openai_models_long
+
+DEFAULT_CONFIG = {
+    "supplier": "anthropic",
+    "anthropic-api-key": "<INSERT YOUR ANTHROPIC API KEY HERE>",
+    "anthropic_api_url": "https://api.anthropic.com",
+    "model": gpt_4o,
+    "temperature": 1,
+    "markdown": True,
+    "easy_copy": True,
+    "non_interactive": False,
+    "json_mode": False,
+    "use_proxy": False,
+    "proxy": "socks5://127.0.0.1:2080",
+}
 
 general_system_prompt_default = """
 You are a helpful AI assistant which answers questions about programming.
