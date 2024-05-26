@@ -47,7 +47,7 @@ On the first execution of the script, a [template](config.yaml) of the config fi
 
 ## Models
 
-As of May 2024, CodeTechnician supports all three models in the Claude 3 series: haiku, sonnet and opus.
+CodeTechnician will support all three models in the Claude 3 series: haiku, sonnet and opus.
 
 Haiku is the fastest and cheapest model. Opus is the most capable. Sonnet is in between.
 
