@@ -1,8 +1,8 @@
 a = Analysis(
-    ['..\\claudecli\\__main__.py'],
-    pathex=['..', '..\\claudecli', 'C:\\Users\\Edward\\Programming\\claudecli\\venv\\Lib\\site-packages'],
+    ['..\\codetechnician\\__main__.py'],
+    pathex=['..', '..\\codetechnician', 'C:\\Users\\Edward\\Programming\\codetechnician\\venv\\Lib\\site-packages'],
     binaries=[],
-    datas=[('..\\claudecli', 'claudecli')],
+    datas=[('..\\codetechnician', 'codetechnician')],
     hiddenimports=[
         "anthropic",
         "black",
@@ -28,6 +28,7 @@ a = Analysis(
         "xdg-base-dirs",
         "pyperclip",
         "pysocks",
+        "jsonschema",
     ],
     hookspath=[],
     hooksconfig={},
@@ -45,7 +46,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='claudecli',
+    name='codetechnician',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -65,5 +66,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='claudecli',
+    name='codetechnician',
 )
