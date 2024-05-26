@@ -14,10 +14,11 @@ from typing import Optional, Union
 from rich.logging import RichHandler
 
 from codetechnician.printing import print_markdown, console
-from codetechnician.constants import coder_system_prompt_hardcoded
+from codetechnician.constants import coder_system_prompt_hardcoded, anthropic_models_long, openai_models_long
 from codetechnician import save
-from codetechnician.ai_functions_openai import gather_ai_code_responses, prompt_ai
-from codetechnician.parseaicode import CodeResponse
+from codetechnician import openai_interface
+from codetechnician import anthropic_interface
+from codetechnician.parseaicode import CodeResponse, ChatResponse
 from codetechnician.pure import format_cost
 from codetechnician.codebase_watcher import (
     Codebase,
@@ -65,7 +66,7 @@ def prompt_user(
     Ask the user for input, build the request and perform it.
 
     Args:
-        client (anthropic.Client): The Anthropic client instance.
+        client: The client instance.
         context (Optional[str]): The XML representation of the codebase or changes to the codebase, if provided.
         conversation_history (ConversationHistory): The history of the conversation so far.
         session (PromptSession): The prompt session object for interactive input.
@@ -85,6 +86,8 @@ def prompt_user(
             or more than one Assistant message in a row, and it ends with an Assistant message if
             it is not empty.
         - If there is a codebase_xml, then conversation_history is empty.
+        - If the model is an OpenAI model, then the client is an OpenAI client. 
+        - If the model is an Anthropic model, then the client is an Anthropic client.
 
     Side effects:
         - Modifies the `conversation_history` list by appending new messages from the user and the AI model.
@@ -168,7 +171,14 @@ def prompt_user(
         ]
 
         messages = conversation_history + new_messages
-        response_content: Optional[CodeResponse] = gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
+        
+        if model in anthropic_models_long:
+            response_content: Optional[CodeResponse] = anthropic_interface.gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
+        elif model in openai_models_long:
+            response_content: Optional[CodeResponse] = openai_interface.gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded + user_system_prompt_code)  # type: ignore
+        else:
+            console.print(f"[bold red]Unsupported model: {model}[/bold red]")
+            return UserPromptOutcome.CONTINUE
 
         if response_content is None:
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
@@ -184,10 +194,10 @@ def prompt_user(
             conversation_ = messages[:-1]
             # Add assistant message onto the conversation history
             conversation_contents = conversation_ + [
-                {"role": "assistant", "content": response_content.content_string}
+                {"role": "assistant", "content": response_content.content_string} # type: ignore
             ]
 
-            # console.print(format_cost(response_content.usage, model))  # type: ignore
+            console.print(format_cost(response_content.usage, model))  # type: ignore
 
             return conversation_contents
     else:
@@ -199,8 +209,15 @@ def prompt_user(
         ]
 
         messages = conversation_history + new_messages
+        chat_response_optional: Optional[ChatResponse] = None
 
-        chat_response_optional = prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
+        if model in anthropic_models_long:
+            chat_response_optional = anthropic_interface.prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
+        elif model in openai_models_long:
+            chat_response_optional = openai_interface.prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
+        else:
+            console.print(f"[bold red]Unsupported model: {model}[/bold red]")
+            return UserPromptOutcome.CONTINUE
 
         if chat_response_optional is None:
             console.print("[bold red]Failed to get a response from the AI.[/bold red]")
@@ -209,10 +226,10 @@ def prompt_user(
             if render_markdown:
                 print_markdown(console, chat_response_optional.content_string)  # type: ignore
             else:
-                console.print(chat_response_optional.content_string)
+                console.print(chat_response_optional.content_string) # type: ignore
 
-            response_string = chat_response_optional.content_string
-            usage = chat_response_optional.usage
-            # console.print(format_cost(usage, model))  # type: ignore
+            response_string = chat_response_optional.content_string # type: ignore
+            usage = chat_response_optional.usage # type: ignore
+            console.print(format_cost(usage, model))  # type: ignore
             chat_history = messages + [{"role": "assistant", "content": response_string}]
             return chat_history

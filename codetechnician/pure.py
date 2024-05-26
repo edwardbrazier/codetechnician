@@ -3,7 +3,7 @@ Utility functions for working with strings, files, and calculating expenses.
 """
 
 from codetechnician.parseaicode import Usage
-from codetechnician.constants import opus, sonnet, haiku
+from codetechnician.constants import opus, sonnet, haiku, gpt_4o, all_models
 
 
 def get_size(contents: str) -> str:
@@ -40,7 +40,7 @@ def calculate_cost(usage: Usage, model_name: str) -> float:
 
     Preconditions:
         - usage is a valid Usage object.
-        - model_name is one of "haiku", "sonnet", or "opus".
+        - model_name is one from constants.all_models
 
     Side effects:
         None
@@ -53,13 +53,9 @@ def calculate_cost(usage: Usage, model_name: str) -> float:
         guarantees: The returned value will be a non-negative float.
     """
     assert isinstance(usage, Usage), "usage must be a Usage object"
-    assert model_name in [
-        haiku,
-        sonnet,
-        opus,
-    ], "model_name must be one of 'haiku', 'sonnet', or 'opus'"
+    assert model_name in all_models, "model_name must be one from constants.all_models"
 
-    pricing = {haiku: (0.25, 1.25), sonnet: (3.0, 15.0), opus: (15.0, 75.0)}
+    pricing = {haiku: (0.25, 1.25), sonnet: (3.0, 15.0), opus: (15.0, 75.0), gpt_4o: (5.0, 15.0) }
 
     input_cost_per_million, output_cost_per_million = pricing[model_name]
 
@@ -80,7 +76,7 @@ def format_cost(usage: Usage, model_name: str) -> str:
 
     Preconditions:
         - usage is a valid Usage object.
-        - model_name is one of "haiku", "sonnet", or "opus".
+        - model_name is one from constants.all_models
 
     Side effects:
         None
@@ -93,11 +89,7 @@ def format_cost(usage: Usage, model_name: str) -> str:
         guarantees: The returned value will be a non-empty string.
     """
     assert isinstance(usage, Usage), "usage must be a Usage object"
-    assert model_name in [
-        haiku,
-        sonnet,
-        opus,
-    ], "model_name must be one of 'haiku', 'sonnet', or 'opus'"
+    assert model_name in all_models, "model_name must be one from constants.all_models"
 
     cost = calculate_cost(usage, model_name)
     return f"[bold green]Tokens used in this message:[/bold green] Input - {usage.input_tokens}; Output - {usage.output_tokens} [bold green]Cost:[/bold green] ${cost:.4f} USD"

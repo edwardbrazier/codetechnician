@@ -11,7 +11,7 @@ import sys
 from prompt_toolkit import PromptSession
 from typing import Optional
 
-from codetechnician.ai_functions_openai import setup_client
+from codetechnician import openai_interface, anthropic_interface
 from codetechnician.interact import *
 from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
@@ -42,7 +42,7 @@ from codetechnician.codebase_watcher import Codebase, amend_codebase_records
     "-m",
     "--model",
     "model",
-    help="Set the model. In ascending order of capability, the Claude options are: 'haiku', 'sonnet', 'opus'. GPT models are also supported, such as 'gpt-4o'",
+    help="Set the model. Options are: 'gpt-4o', 'opus', 'sonnet', 'haiku'. Defaults to haiku, which is the cheapest option.",
     required=False,
 )
 @click.option(
@@ -79,7 +79,7 @@ from codetechnician.codebase_watcher import Codebase, amend_codebase_records
     help="""
     Path to the file containing the Coder System Prompt. 
     Defaults to '~/.codetechnician_coder_system_prompt.txt'. 
-    This is additional to a hardcoded coder system prompt which tells the AI how to format its output in XML when it is asked to write code into some files.""",
+    This is additional to a hardcoded coder system prompt which tells the AI how to format its output for parsing when it is asked to write code into some files.""",
     required=False,
 )
 @click.option(
@@ -136,6 +136,7 @@ def main(
         "opus": constants.opus,
         "sonnet": constants.sonnet,
         "haiku": constants.haiku,
+        "gpt-4o": constants.gpt_4o
     }
 
     config["non_interactive"] = False
@@ -148,19 +149,16 @@ def main(
 
     # If the config specifies a model and the command line parameters do not specify a model, then
     # use the one from the config file.
-    # if model:
+    if model:
         # First check whether the provided model is valid
-        # if model not in model_mapping:
-        #     console.print(f"[red bold]Invalid model: {model}[/red bold]")
-        #     sys.exit(1)
-        # else:
-            # model_notnone: str = model_mapping.get(model.lower(), model)
-    
-    model_notnone: str = "gpt-4o"
-    config["model"] = model_notnone
-
-    # elif "model" not in config:
-        # config["model"] = constants.haiku
+        if model not in model_mapping:
+            console.print(f"[red bold]Invalid model: {model}[/red bold]")
+            sys.exit(1)
+        else:
+            model_long: str = model_mapping.get(model.lower(), model)    
+            config["model"] = model_long
+    elif "model" not in config:
+        config["model"] = constants.haiku
 
     console.print(f"Model in use: [green bold]{config['model']}[/green bold]")
 
@@ -257,7 +255,14 @@ def main(
         f"Code files from the AI will be written to this folder: [bold green]{output_dir_notnone}[/bold green]\n"
     )
 
-    client: Client = setup_client(api_key)  # type: ignore
+    if config["model"] in constants.anthropic_models_long:
+        client = anthropic_interface.setup_client(api_key)
+    elif config["model"] in constants.openai_models_long:
+        client = openai_interface.setup_client(api_key)
+    else:
+        console.print(f"Model not supported: {model}")
+        sys.exit(1)
+        
     codebase_updates: Optional[CodebaseUpdates] = None
 
     while True:

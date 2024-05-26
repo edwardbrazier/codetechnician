@@ -23,7 +23,7 @@ DEFAULT_CONFIG = {
     "supplier": "anthropic",
     "anthropic-api-key": "<INSERT YOUR ANTHROPIC API KEY HERE>",
     "anthropic_api_url": "https://api.anthropic.com",
-    "anthropic_model": "claude-3-haiku-20240307",
+    "model": "claude-3-haiku-20240307",
     "temperature": 1,
     "markdown": True,
     "easy_copy": True,
@@ -37,6 +37,12 @@ DEFAULT_CONFIG = {
 opus = "claude-3-opus-20240229"
 sonnet = "claude-3-sonnet-20240229"
 haiku = "claude-3-haiku-20240307"
+gpt_4o = "gpt-4o"
+
+anthropic_models_long = [opus, sonnet, haiku]
+openai_models_long = [gpt_4o]
+
+all_models = anthropic_models_long + openai_models_long
 
 general_system_prompt_default = '''
 You are a helpful AI assistant which answers questions about programming.

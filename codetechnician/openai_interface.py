@@ -59,13 +59,19 @@ def prompt_ai(
         Optional[str]: The AI-generated response string, or None if an error occurred.
         guarantees: The returned value is either a non-empty string or None.
     """
+
+    # The OpenAI API requires that the system prompt be included in the messages list
+    messages_inc_system = [
+        {"role": "system", "content": system_prompt},
+        *messages,
+    ]
+
     # try:
     response = client.chat.completions.create( # type: ignore
         model=model,
         max_tokens=4000,
         temperature=0,
-        messages=messages,  # type: ignore
-        # system=system_prompt,
+        messages=messages_inc_system,  # type: ignore
     )
     # except requests.ConnectionError:
     #     console.print("[red bold]Connection error, try again...[/red bold]")
@@ -88,13 +94,16 @@ def prompt_ai(
         # as an assistant message.
         content_string: str = content_block.message.content  # type: ignore
 
+        prompt_tokens = response.usage.prompt_tokens
+        completion_tokens = response.usage.completion_tokens
+
         if content_string == "":
             console.print("Received an empty response string.")
             return None
         else:
             return ChatResponse(
                 content_string=content_string,
-                usage=Usage(0,0),
+                usage=Usage(prompt_tokens, completion_tokens),
             )
 
 
@@ -130,7 +139,6 @@ def gather_ai_code_responses(
         Optional[ResponseContent]: A ResponseContent object containing the concatenated responses and the list of FileData objects if the responses are successfully parsed, or None if an error occurred.
         guarantees: If the program receives a response from the AI, the returned value is a ResponseContent object without any Nones inside it.
     """
-    assert isinstance(client, anthropic.Client), "Client must be an Anthropic Client"
     assert isinstance(model, str), "model must be a string"
     assert isinstance(messages, list), "messages must be a list"
     assert len(messages) > 0, "messages must be a non-empty list"
