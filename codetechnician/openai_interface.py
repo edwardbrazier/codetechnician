@@ -216,6 +216,14 @@ def gather_ai_code_responses(
                     )
                     return response_content
             elif content_block.finish_reason == "length":
+                console.print("[bold red]AI reached the token limit.[/bold red]")
+                return None
+
+
+
+
+
+
                 # assume incomplete response and request continuation              
 
                 assistant_message = {  # type: ignore
