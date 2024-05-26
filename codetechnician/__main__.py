@@ -92,7 +92,7 @@ from codetechnician.codebase_watcher import Codebase, amend_codebase_records
     Defaults to '~/.codetechnician_general_system_prompt.txt'.""",
     required=False,
 )
-@click.version_option(version=constants.VERSION, prog_name='codetechnician')
+@click.version_option(version=constants.VERSION, prog_name="codetechnician")
 def main(
     sources: list[str],
     model: Optional[str],
@@ -115,7 +115,7 @@ def main(
     >>> /o improve the commenting in load.py\n
     Write '/p <instructions>' to render the AI's response as plain text.
     (This is a workaround in case the AI outputs malformed Markdown.)
-    Write '/u' to check for changes in the watched codebases and prepend the contents of added or modified files to the next message. 
+    Write '/u' to check for changes in the watched codebases and prepend the contents of added or modified files to the next message.
     (At the moment this only works if there is a single codebase.)
     """
 
@@ -136,7 +136,7 @@ def main(
         "opus": constants.opus,
         "sonnet": constants.sonnet,
         "haiku": constants.haiku,
-        "gpt-4o": constants.gpt_4o
+        "gpt-4o": constants.gpt_4o,
     }
 
     config["non_interactive"] = False
@@ -155,7 +155,7 @@ def main(
             console.print(f"[red bold]Invalid model: {model}[/red bold]")
             sys.exit(1)
         else:
-            model_long: str = model_mapping.get(model.lower(), model)    
+            model_long: str = model_mapping.get(model.lower(), model)
             config["model"] = model_long
     elif "model" not in config:
         config["model"] = constants.haiku
@@ -262,7 +262,7 @@ def main(
     else:
         console.print(f"Model not supported: {model}")
         sys.exit(1)
-        
+
     codebase_updates: Optional[CodebaseUpdates] = None
 
     while True:
@@ -282,7 +282,7 @@ def main(
                 """.format(
                 codebase_initial_contents,
                 codebase_updates.change_descriptive.change_contents,
-            ) 
+            )
             codebases = amend_codebase_records(
                 codebases, codebase_updates.codebase_changes
             )

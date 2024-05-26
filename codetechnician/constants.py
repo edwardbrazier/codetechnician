@@ -44,7 +44,7 @@ openai_models_long = [gpt_4o]
 
 all_models = anthropic_models_long + openai_models_long
 
-general_system_prompt_default = '''
+general_system_prompt_default = """
 You are a helpful AI assistant which answers questions about programming.
 
 If asked for a table, always format it using Markdown syntax.
@@ -71,9 +71,9 @@ export function greet(name: string): string {
 </codebase_subfolder>
 </codebase>
 ```
-'''
+"""
 
-coder_system_prompt_hardcoded = '''
+coder_system_prompt_hardcoded_claude = '''
 ** Specialised Format **
 
 You are a machine for generating source code by transforming input source code based on natural language instructions. 
@@ -389,3 +389,12 @@ Added a new multiply function that takes two numbers and returns their product.
 </examples>
 
 '''
+
+coder_system_prompt_hardcoded_gpt = """
+You are a machine for generating source code by transforming input source code based on natural language instructions. 
+Do not output source code for files which you have not modified. Only output source code for files where you are making modifications. 
+Here is an illustration of the output format that you must use.
+Your output must strictly follow this precise format. 
+
+'{"files": [{"path": "example.py", "content": "print(\"Hello, World!\")", "changes": "Removed some extraneous code."}, {"path": "example2.py", "content": "a=1\nb=2\nprint(f\"{a} + {b} = {a + b}\")", "changes": "Corrected addition of a and b."}]}'
+"""

@@ -27,7 +27,7 @@ def setup_client(api_key: str):
 
 
 def prompt_ai(
-    client, # type: ignore
+    client,
     model: str,
     messages: list[dict[str, str]],
     system_prompt: str,
@@ -67,18 +67,12 @@ def prompt_ai(
     ]
 
     # try:
-    response = client.chat.completions.create( # type: ignore
+    response = client.chat.completions.create(
         model=model,
         max_tokens=4000,
         temperature=0,
-        messages=messages_inc_system,  # type: ignore
+        messages=messages_inc_system,
     )
-    # except requests.ConnectionError:
-    #     console.print("[red bold]Connection error, try again...[/red bold]")
-    #     return None
-    # except requests.Timeout:
-    #     console.print("[red bold]Connection timed out, try again...[/red bold]")
-    #     return None
 
     choices = response.choices
     content_string: str = ""
@@ -92,7 +86,7 @@ def prompt_ai(
         # Strip trailing whitespace from last message
         # so that if we pass it back, Anthropic will accept it
         # as an assistant message.
-        content_string: str = content_block.message.content  # type: ignore
+        content_string: str = content_block.message.content
 
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
