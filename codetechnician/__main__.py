@@ -16,6 +16,7 @@ from codetechnician.interact import *
 from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
 from codetechnician.codebase_watcher import Codebase, amend_codebase_records
+from codetechnician.pure import get_size
 
 
 @click.command()
@@ -206,6 +207,12 @@ def main(
                 codebase_initial_contents += load_codebase_xml_(codebases, extensions)
             else:
                 console.print(f"[red bold]Invalid source: {source}[/red bold]")
+
+            codebase_contents_desc = get_size(codebase_initial_contents)
+            console.print(
+                f"Codebase contents size: [green bold]{codebase_contents_desc}[/green bold]"
+            )
+        
 
     if coder_system_prompt_user is None:
         coder_system_prompt_user = os.path.expanduser(
