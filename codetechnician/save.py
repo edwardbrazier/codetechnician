@@ -11,7 +11,7 @@ Functions:
 """
 
 import os
-import xml.sax.saxutils
+import html
 
 from rich.console import Console
 
@@ -125,7 +125,7 @@ def write_files(
             console.print(f"[bold green]Writing to {output_file}...[/bold green]")
 
             # Unescape special characters in the contents before writing to file
-            unescaped_contents = xml.sax.saxutils.unescape(contents)
+            unescaped_contents = html.unescape(contents)
 
             with open(output_file, "w") as f:
                 f.write(unescaped_contents)

@@ -8,21 +8,20 @@ from enum import Enum
 import logging
 import sys
 
-import anthropic
 from prompt_toolkit import HTML, PromptSession
 from typing import Optional, Union
 from rich.logging import RichHandler
 
 from codetechnician.printing import print_markdown, console
 from codetechnician.constants import (
-    coder_system_prompt_hardcoded_claude,
+    # coder_system_prompt_hardcoded_claude,
     coder_system_prompt_hardcoded_gpt,
     anthropic_models_long,
     openai_models_long,
 )
 from codetechnician import save
 from codetechnician import openai_interface
-from codetechnician import anthropic_interface
+# from codetechnician import anthropic_interface
 from codetechnician.ai_response import CodeResponse, ChatResponse
 from codetechnician.pure import format_cost
 from codetechnician.codebase_watcher import (
@@ -55,7 +54,7 @@ PromptOutcome = Union[ConversationHistory, UserPromptOutcome, CodebaseUpdates]
 
 
 def prompt_user(
-    client: anthropic.Client,
+    client,  # type: ignore
     context: Optional[str],
     conversation_history: ConversationHistory,
     session: PromptSession[str],
@@ -216,7 +215,8 @@ def prompt_user(
         chat_response_optional: Optional[ChatResponse] = None
 
         if model in anthropic_models_long:
-            chat_response_optional = anthropic_interface.prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
+            chat_response_optional = None
+            # chat_response_optional = anthropic_interface.prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
         elif model in openai_models_long:
             chat_response_optional = openai_interface.prompt_ai(client, model, messages, system_prompt_general)  # type: ignore
         else:

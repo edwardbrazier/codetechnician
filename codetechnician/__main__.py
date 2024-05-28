@@ -11,7 +11,7 @@ import sys
 from prompt_toolkit import PromptSession
 from typing import Optional
 
-from codetechnician import openai_interface, anthropic_interface
+from codetechnician import openai_interface
 from codetechnician.interact import *
 from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
@@ -256,7 +256,8 @@ def main(
     )
 
     if config["model"] in constants.anthropic_models_long:
-        client = anthropic_interface.setup_client(api_key)
+        sys.exit(1)
+        # client = anthropic_interface.setup_client(api_key)
     elif config["model"] in constants.openai_models_long:
         client = openai_interface.setup_client(api_key)
     else:
