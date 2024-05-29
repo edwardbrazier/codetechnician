@@ -169,7 +169,7 @@ def prompt_user(
                 # the conversation.
                 "content": context_data
                 + user_instruction
-                + "\nMake sure to escape special characters correctly inside the XML, and always provide a change description!",
+                + "\nAlways provide a change description!",
             },
         ]
 
