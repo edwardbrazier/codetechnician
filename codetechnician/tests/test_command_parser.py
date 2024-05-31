@@ -1,5 +1,5 @@
 import unittest
-from codetechnician.command_parser import parse_input, Message, OutputCommand, UpdateCommand, ModelInstruction, PlainTextCommand, Error
+from codetechnician.command_parser import parse_input, Message, OutputCommand, UpdateCommand, ModelInstruction, PlainTextCommand, FileSelectorCommand, Error
 
 class TestParser(unittest.TestCase):
     def test_output_command(self):
@@ -27,6 +27,15 @@ class TestParser(unittest.TestCase):
 
         input_str = " /P How does recursion work?   "
         expected_output = PlainTextCommand(Message("How does recursion work?"))
+        self.assertEqual(parse_input(input_str), expected_output)
+
+    def test_file_selector_command(self):
+        input_str = "/fs"
+        expected_output = FileSelectorCommand()
+        self.assertEqual(parse_input(input_str), expected_output)
+
+        input_str = "/FS"  
+        expected_output = FileSelectorCommand()
         self.assertEqual(parse_input(input_str), expected_output)
 
     def test_message(self):
