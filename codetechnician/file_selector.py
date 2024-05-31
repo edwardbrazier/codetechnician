@@ -22,7 +22,7 @@ FileRelativePath = NewType("FileRelativePath", str)
 class MalformedResponse:
     pass
 
-RagResponse = Union[List[FileRelativePath], MalformedResponse]
+FileSelectorResponse = Union[list[FileRelativePath], MalformedResponse]
 
 RAG_SYSTEM_PROMPT = """Output only JSON, in this format: 
 {
@@ -38,7 +38,7 @@ RAG_SYSTEM_PROMPT = """Output only JSON, in this format:
 
 def retrieve_relevant_files(codebases: List[Codebase], 
                             user_message: str,
-                            conversation_history: ConversationHistory) -> RagResponse:
+                            conversation_history: ConversationHistory) -> FileSelectorResponse:
     """
     Retrieves a list of relevant code files based on the user's message and conversation history.
 
@@ -117,7 +117,7 @@ def validate_json_schema(json_data: str) -> bool:
         return False
 
 
-def parse_json_response(json_data: str) -> RagResponse:
+def parse_json_response(json_data: str) -> FileSelectorResponse:
     """
     Parses the JSON response from the AI model.
 

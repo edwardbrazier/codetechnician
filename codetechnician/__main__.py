@@ -17,6 +17,7 @@ from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
 from codetechnician.codebase_watcher import Codebase, amend_codebase_records
 from codetechnician.pure import get_size
+from codetechnician.file_selector import retrieve_relevant_files, FileSelectorResponse, MalformedResponse, FileRelativePath
 
 
 @click.command()
@@ -274,6 +275,19 @@ def main(
     codebase_updates: Optional[CodebaseUpdates] = None
 
     while True:
+        user_entry = session.prompt(HTML(f"<b> >>> </b>"))
+
+        selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_entry, [])
+
+        if isinstance(selector_response, MalformedResponse):
+            console.print("Malformed response from file selector.")
+            continue
+        else:
+            assert isinstance(selector_response, list)
+            relevant_files = selector_response
+            console.print(f"Relevant files: {relevant_files}")
+            continue
+
         context: Optional[str] = None
 
         if conversation_history == [] and codebase_updates is None:
