@@ -177,3 +177,4 @@ out4/
 buildspec/requirements.txt
 buildspec/chatgpt.spec
 out/__main__.py
+notes/*

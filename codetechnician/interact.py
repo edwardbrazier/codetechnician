@@ -34,6 +34,7 @@ from codetechnician.codebase_watcher import (
 )
 from codetechnician.file_selector import FileSelectorResponse, FileRelativePath, MalformedResponse, FileSelection, retrieve_relevant_files
 from codetechnician.load import load_file_xml
+from codetechnician.command_parser import parse_input, Message, OutputCommand, UpdateCommand, ModelInstruction, PlainTextCommand, FileSelectorCommand, Error
 
 logger = logging.getLogger("rich")
 
@@ -116,7 +117,7 @@ def prompt_user(
         return UserPromptOutcome.CONTINUE
 
     render_markdown: bool = True
-    user_instruction: str = user_entry
+    # user_instruction: str = user_entry
 
     # if user_entry.lower().strip().startswith("/p"):
     #     render_markdown = False
@@ -235,9 +236,27 @@ def prompt_user(
 
     #         return conversation_contents
     # else:
-    if True:
-        # User is conversing with AI.
-        user_prompt: str = user_instruction
+    
+    command = parse_input(user_entry)
+
+    if isinstance(command, OutputCommand):
+        console.print("Output command received.")
+        pass
+    elif isinstance(command, UpdateCommand):
+        console.print("Update command is not yet implemented.")
+        pass
+    elif isinstance(command, PlainTextCommand):
+        console.print("Plain text command is not yet implemented.")
+        pass
+    elif isinstance(command, FileSelectorCommand):
+        console.print("File selector command received.")
+        pass
+    elif isinstance(command, ModelInstruction):
+        console.print("Model instruction received.")
+        pass
+    elif isinstance(command, Message):
+    # User is conversing with AI.
+        user_prompt: str = command.content
         selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_prompt, conversation_history) # type: ignore
         relevant_files: list[FileRelativePath] = []
 
@@ -320,3 +339,11 @@ def prompt_user(
                 {"role": "assistant", "content": response_string}
             ]
             return chat_history
+    elif isinstance(command, Error): # type: ignore
+        console.print(f"[bold red]Error: {command.error_message}[/bold red]")
+        return UserPromptOutcome.CONTINUE
+    else:
+        console.print("[bold red]Invalid command.[/bold red]")
+        return UserPromptOutcome.CONTINUE
+    
+    return UserPromptOutcome.CONTINUE # Temporarily to cover the yet-to-be-implemented code paths
