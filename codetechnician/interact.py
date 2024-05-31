@@ -6,7 +6,7 @@ It allows users to send prompts and receive responses from the AI model.
 
 from enum import Enum
 import logging
-import sys
+# import sys
 
 from prompt_toolkit import HTML, PromptSession
 from typing import Optional, Union
@@ -15,22 +15,25 @@ from rich.logging import RichHandler
 from codetechnician.printing import print_markdown, console
 from codetechnician.constants import (
     # coder_system_prompt_hardcoded_claude,
-    coder_system_prompt_hardcoded_gpt,
+    # coder_system_prompt_hardcoded_gpt,
     anthropic_models_long,
     openai_models_long,
+    ConversationHistory
 )
-from codetechnician import save
+# from codetechnician import save
 from codetechnician import openai_interface
 # from codetechnician import anthropic_interface
-from codetechnician.ai_response import CodeResponse, ChatResponse
+from codetechnician.ai_response import ChatResponse, UsageInfo #  CodeResponse, 
 from codetechnician.pure import format_cost
 from codetechnician.codebase_watcher import (
     Codebase,
     CodebaseUpdates,
-    CodebaseState,
-    find_codebase_change_contents,
-    num_affected_files,
+    # CodebaseState,
+    # find_codebase_change_contents,
+    # num_affected_files,
 )
+from codetechnician.file_selector import FileSelectorResponse, FileRelativePath, MalformedResponse, FileSelection, retrieve_relevant_files
+from codetechnician.load import load_file_xml
 
 logger = logging.getLogger("rich")
 
@@ -42,20 +45,16 @@ logging.basicConfig(
     ],
 )
 
-ConversationHistory = list[dict[str, str]]
-
-
 class UserPromptOutcome(Enum):
     CONTINUE = 1
     STOP = 0
-
 
 PromptOutcome = Union[ConversationHistory, UserPromptOutcome, CodebaseUpdates]
 
 
 def prompt_user(
     client,  # type: ignore
-    context: Optional[str],
+    codebase_contents: Optional[str],
     conversation_history: ConversationHistory,
     session: PromptSession[str],
     config: dict,  # type: ignore
@@ -107,17 +106,9 @@ def prompt_user(
     """
     user_entry: str = ""
 
-    if context is not None:
-        context_data: str = context
-    else:
-        context_data: str = ""
-
     model: str = config["model"]  # type: ignore
 
-    if config["non_interactive"]:
-        user_entry = sys.stdin.read()
-    else:
-        user_entry = session.prompt(HTML(f"<b> >>> </b>"))
+    user_entry = session.prompt(HTML(f"<b> >>> </b>"))
 
     if user_entry.lower().strip() == "/q":
         return UserPromptOutcome.STOP
@@ -127,89 +118,182 @@ def prompt_user(
     render_markdown: bool = True
     user_instruction: str = user_entry
 
-    if user_entry.lower().strip().startswith("/p"):
-        render_markdown = False
-        user_instruction = (user_entry.strip())[2:].strip()
+    # if user_entry.lower().strip().startswith("/p"):
+    #     render_markdown = False
+    #     user_instruction = (user_entry.strip())[2:].strip()
 
-    if user_entry.lower().strip() == "/u":
-        codebase_locations: list[str] = [codebase.location for codebase in codebases]
-        codebase_states: list[CodebaseState] = [
-            codebase.state for codebase in codebases
-        ]
-        codebase_updates: CodebaseUpdates = find_codebase_change_contents(
-            codebase_locations, file_extensions, codebase_states
-        )
+    # if user_entry.lower().strip() == "/u":
+    #     codebase_locations: list[str] = [codebase.location for codebase in codebases]
+    #     codebase_states: list[CodebaseState] = [
+    #         codebase.state for codebase in codebases
+    #     ]
+    #     codebase_updates: CodebaseUpdates = find_codebase_change_contents(
+    #         codebase_locations, file_extensions, codebase_states
+    #     )
 
-        if num_affected_files(codebase_updates) == 0:
-            console.print("No changes were identified in the codebase.")
-        else:
-            console.print(codebase_updates.change_descriptive.change_descriptions)
-            console.print(
-                "Details of the changes will be prepended to your next message to the AI."
-            )
+    #     if num_affected_files(codebase_updates) == 0:
+    #         console.print("No changes were identified in the codebase.")
+    #     else:
+    #         console.print(codebase_updates.change_descriptive.change_descriptions)
+    #         console.print(
+    #             "Details of the changes will be prepended to your next message to the AI."
+    #         )
 
-        return codebase_updates
+        # return codebase_updates
 
     # There are two cases:
     # One is that the user wants the AI to talk to them.
     # The other is that the user wants the AI to send code to some files.
 
     # The user wants the AI to output code to files
-    if user_entry.lower().strip().startswith("/o"):
-        # Remove the "/o" from the message
-        user_instruction = (user_entry.strip())[2:].strip()
+    # if user_entry.lower().strip().startswith("/o"):
+    #     # Remove the "/o" from the message
+    #     user_instruction = (user_entry.strip())[2:].strip()
 
-        # The Anthropic documentation says that Claude performs better when
-        # the input data comes first and the instructions come last.
-        new_messages: list[dict[str, str]] = [
-            {
-                "role": "user",
-                # The following is still ok if context_data is empty,
-                # which should happen if it's not the first turn of
-                # the conversation.
-                "content": context_data
-                + user_instruction
-                + "\nAlways provide a change description!",
-            },
-        ]
+    #     console.print(f"Asking file selection AI for a list of relevant files.")
+    #     selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_instruction, conversation_history) # type: ignore
+    #     relevant_files: list[FileRelativePath] = []
 
-        messages = conversation_history + new_messages
+    #     if isinstance(selector_response, MalformedResponse):
+    #         console.print("Malformed response from file selector.")
+    #     else:
+    #         assert isinstance(selector_response, FileSelection)
+    #         relevant_files = selector_response.files
+    #         console.print(f"[bold green]Relevant files:[/bold green]")
+    #         for file_path in relevant_files:
+    #             console.print(f"- {file_path}")
+    #         console.print(format_cost(selector_response.usage_data))
 
-        if model in anthropic_models_long:
-            response_content: Optional[CodeResponse] = anthropic_interface.gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded_claude + user_system_prompt_code)  # type: ignore
-        elif model in openai_models_long:
-            response_content: Optional[CodeResponse] = openai_interface.gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded_gpt + user_system_prompt_code)  # type: ignore
-        else:
-            console.print(f"[bold red]Unsupported model: {model}[/bold red]")
-            return UserPromptOutcome.CONTINUE
+    #     context: Optional[str] = None
 
-        if response_content is None:
-            console.print("[bold red]Failed to get a response from the AI.[/bold red]")
-            return UserPromptOutcome.CONTINUE
-        else:
-            try:
-                save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore
-                console.print("[bold green]Finished saving AI output.[/bold green]")
-            except Exception as e:
-                console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
+    #     if len(relevant_files) > 0:
+    #         try:
+    #             console.print("Loading relevant files...")
+    #             context = "Here are the relevant files from the codebase. Read them carefully.\n\n"
+    #             for file_path in relevant_files:
+    #                 file_contents = load_file_xml(file_path)
+    #                 if file_contents:
+    #                     context += file_contents + "\n\n"
+    #                 else:
+    #                     console.print(f"[yellow]Skipping file {file_path} due to loading issues.[/yellow]")
+    #         except Exception as e:
+    #             console.print(f"[red]Error loading relevant files: {e}[/red]")
+    #             console.print("Using content from all files from all specified codebases.")
+    #             context = (
+    #                 "Here is a codebase. Read it carefully.\n\n"
+    #                 "\n\nCodebase:\n" + codebase_initial_contents + "\n\n"
+    #             )
+    #     else:
+    #         console.print("Using content from all files from all specified codebases.")
+    #         context = (
+    #             "Here is a codebase. Read it carefully.\n\n"
+    #             "\n\nCodebase:\n" + codebase_initial_contents + "\n\n"
+    #         )
 
-            # Remove dummy assistant message from end of conversation history
-            conversation_ = messages[:-1]
-            # Add assistant message onto the conversation history
-            conversation_contents = conversation_ + [
-                {"role": "assistant", "content": response_content.content_string}  # type: ignore
-            ]
+    #     # The Anthropic documentation says that Claude performs better when
+    #     # the input data comes first and the instructions come last.
+    #     new_messages: list[dict[str, str]] = [
+    #         {
+    #             "role": "user",
+    #             # The following is still ok if context_data is empty,
+    #             # which should happen if it's not the first turn of
+    #             # the conversation.
+    #             "content": context
+    #             + user_instruction
+    #             + "\nAlways provide a change description!",
+    #         },
+    #     ]
 
-            console.print(format_cost(response_content.usage, model))  # type: ignore
+    #     messages = conversation_history + new_messages
 
-            return conversation_contents
-    else:
+    #     if model in anthropic_models_long:
+    #         response_content: Optional[CodeResponse] = anthropic_interface.gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded_claude + user_system_prompt_code)  # type: ignore
+    #     elif model in openai_models_long:
+    #         response_content: Optional[CodeResponse] = openai_interface.gather_ai_code_responses(client, model, messages, coder_system_prompt_hardcoded_gpt + user_system_prompt_code)  # type: ignore
+    #     else:
+    #         console.print(f"[bold red]Unsupported model: {model}[/bold red]")
+    #         return UserPromptOutcome.CONTINUE
+
+    #     if response_content is None:
+    #         console.print("[bold red]Failed to get a response from the AI.[/bold red]")
+    #         return UserPromptOutcome.CONTINUE
+    #     else:
+    #         try:
+    #             save.save_ai_output(response_content, output_dir_notnone, force_overwrite)  # type: ignore
+    #             console.print("[bold green]Finished saving AI output.[/bold green]")
+    #         except Exception as e:
+    #             console.print(f"[bold red]Error processing AI response: {e}[/bold red]")
+
+    #         # Remove dummy assistant message from end of conversation history
+    #         conversation_ = messages[:-1]
+    #         # Add assistant message onto the conversation history
+    #         conversation_contents = conversation_ + [
+    #             {"role": "assistant", "content": response_content.content_string}  # type: ignore
+    #         ]
+
+    #         console.print(format_cost(response_content.usage, model))  # type: ignore
+
+    #         return conversation_contents
+    # else:
+    if True:
         # User is conversing with AI.
         user_prompt: str = user_instruction
 
-        new_messages: list[dict[str, str]] = [
-            {"role": "user", "content": context_data + user_prompt}
-        ]
+        console.print(f"Asking file selector AI for a list of relevant files.")
+        selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_prompt, conversation_history) # type: ignore
+        relevant_files: list[FileRelativePath] = []
+
+        if isinstance(selector_response, MalformedResponse):
+            console.print("Malformed response from file selector.")
+        else:
+            assert isinstance(selector_response, FileSelection)
+            relevant_files = selector_response.files
+            console.print(f"[bold green]Relevant files:[/bold green]")
+            for file_path in relevant_files:
+                console.print(f"- {file_path}")
+            console.print(format_cost(selector_response.usage_data))
+
+        context: Optional[str] = None
+
+        full_codebase_context: Optional[str]
+        
+        if codebase_contents is not None:
+            full_codebase_context = (
+                    "Here is a codebase. Read it carefully.\n\n"
+                    "\n\nCodebase:\n" + codebase_contents + "\n\n"
+                )
+        else:
+            full_codebase_context = None
+
+        if len(relevant_files) > 0:
+            try:
+                console.print("Loading relevant files...")
+                context = "Here are the relevant files from the codebase. Read them carefully.\n\n"
+                for file_path in relevant_files:
+                    file_contents = load_file_xml(file_path)
+                    if file_contents:
+                        context += file_contents + "\n\n"
+                    else:
+                        console.print(f"[yellow]Skipping file {file_path} due to loading issues.[/yellow]")
+                console.print("Finished loading relevant files.")
+            except Exception as e:
+                console.print(f"[red]Error loading relevant files: {e}[/red]")
+                console.print("Using content from all files from all specified codebases.")
+                context = full_codebase_context
+        else:
+            console.print("Using content from all files from all specified codebases.")
+            context = full_codebase_context
+
+        new_messages: list[dict[str, str]]
+
+        if context is not None:
+            new_messages = [
+                    {"role": "user", "content": context + user_prompt}
+                ]
+        else:
+            new_messages = [
+                    {"role": "user", "content": user_prompt}
+                ]
 
         messages = conversation_history + new_messages
         chat_response_optional: Optional[ChatResponse] = None
@@ -234,7 +318,7 @@ def prompt_user(
 
             response_string = chat_response_optional.content_string  # type: ignore
             usage = chat_response_optional.usage  # type: ignore
-            console.print(format_cost(usage, model))  # type: ignore
+            console.print(format_cost(UsageInfo(usage, model)))  # type: ignore
             chat_history = messages + [
                 {"role": "assistant", "content": response_string}
             ]

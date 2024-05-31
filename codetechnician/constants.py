@@ -11,6 +11,7 @@ from typing import Dict, Tuple
 ConnectionOptions = Dict[str, str]
 Address = Tuple[str, int]
 Server = Tuple[Address, ConnectionOptions]
+ConversationHistory = list[dict[str, str]]
 
 # Define paths for configuration and history files
 BASE = Path(xdg_config_home(), "codetechnician")

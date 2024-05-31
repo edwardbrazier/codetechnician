@@ -91,4 +91,8 @@ def format_cost(usage_info: UsageInfo) -> str:
 
     cost = calculate_cost(usage_info)
     usage = usage_info.usage
-    return f"[bold green]Tokens used in this message:[/bold green] Input - {usage.input_tokens}; Output - {usage.output_tokens} [bold green]Cost:[/bold green] ${cost:.4f} USD"
+    return  f"[bold green]Tokens used in this message:[/bold green] " + \
+            f"Input - {usage.input_tokens}; " + \
+            f"Output - {usage.output_tokens} [bold green] " + \
+            f"Cost:[/bold green] ${cost:.4f} USD " + \
+            f"([white]{usage_info.model_name})[/white]"

@@ -11,11 +11,11 @@ import json
 from jsonschema import ValidationError, validate
 
 from codetechnician.codebase_watcher import Codebase
-from codetechnician.interact import ConversationHistory, ChatResponse
+from codetechnician.constants import ConversationHistory
 from codetechnician.anthropic_interface import setup_client, prompt_ai
 from codetechnician.load import load_codebase_xml_
 from codetechnician.constants import haiku
-from codetechnician.ai_response import UsageInfo
+from codetechnician.ai_response import UsageInfo, ChatResponse
 
 FileRelativePath = NewType("FileRelativePath", str)
 
