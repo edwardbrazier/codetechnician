@@ -238,8 +238,6 @@ def prompt_user(
     if True:
         # User is conversing with AI.
         user_prompt: str = user_instruction
-
-        console.print(f"Asking file selector AI for a list of relevant files.")
         selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_prompt, conversation_history) # type: ignore
         relevant_files: list[FileRelativePath] = []
 
@@ -248,10 +246,11 @@ def prompt_user(
         else:
             assert isinstance(selector_response, FileSelection)
             relevant_files = selector_response.files
-            console.print(f"[bold green]Relevant files:[/bold green]")
+            console.print(f"[bold green]Relevant files:[/bold green] [white not bold](according to {selector_response.usage_data.model_name})[/white not bold]")
             for file_path in relevant_files:
                 console.print(f"- {file_path}")
             console.print(format_cost(selector_response.usage_data))
+            console.line()
 
         context: Optional[str] = None
 
@@ -267,7 +266,6 @@ def prompt_user(
 
         if len(relevant_files) > 0:
             try:
-                console.print("Loading relevant files...")
                 context = "Here are the relevant files from the codebase. Read them carefully.\n\n"
                 for file_path in relevant_files:
                     file_contents = load_file_xml(file_path)
@@ -275,7 +273,6 @@ def prompt_user(
                         context += file_contents + "\n\n"
                     else:
                         console.print(f"[yellow]Skipping file {file_path} due to loading issues.[/yellow]")
-                console.print("Finished loading relevant files.")
             except Exception as e:
                 console.print(f"[red]Error loading relevant files: {e}[/red]")
                 console.print("Using content from all files from all specified codebases.")

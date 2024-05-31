@@ -95,4 +95,4 @@ def format_cost(usage_info: UsageInfo) -> str:
             f"Input - {usage.input_tokens}; " + \
             f"Output - {usage.output_tokens} [bold green] " + \
             f"Cost:[/bold green] ${cost:.4f} USD " + \
-            f"([white]{usage_info.model_name})[/white]"
+            f"([white not bold]{usage_info.model_name})[/white not bold]"
