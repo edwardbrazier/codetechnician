@@ -16,8 +16,8 @@ from codetechnician.interact import *
 from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
 from codetechnician.codebase_watcher import Codebase, amend_codebase_records
-from codetechnician.pure import get_size
-from codetechnician.file_selector import retrieve_relevant_files, FileSelectorResponse, MalformedResponse, FileRelativePath
+from codetechnician.pure import get_size, format_cost
+from codetechnician.file_selector import retrieve_relevant_files, FileSelectorResponse, FileSelection, MalformedResponse, FileRelativePath # type: ignore
 
 
 @click.command()
@@ -277,15 +277,19 @@ def main(
     while True:
         user_entry = session.prompt(HTML(f"<b> >>> </b>"))
 
-        selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_entry, [])
+        selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_entry, []) # type: ignore
 
         if isinstance(selector_response, MalformedResponse):
             console.print("Malformed response from file selector.")
             continue
         else:
-            assert isinstance(selector_response, list)
-            relevant_files = selector_response
-            console.print(f"Relevant files: {relevant_files}")
+            assert isinstance(selector_response, FileSelection)
+            relevant_files: list[FileRelativePath] = selector_response.files
+            console.print(f"[bold green]Relevant files:[/bold green]")
+            for file_path in relevant_files:
+                console.print(f"- {file_path}")
+            console.print(format_cost(selector_response.usage_data))
+            continue
             continue
 
         context: Optional[str] = None

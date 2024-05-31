@@ -37,6 +37,16 @@ class Usage(NamedTuple):
     def __repr__(self):
         return f"Input - {self.input_tokens}; Output - {self.output_tokens}"
 
+class UsageInfo(NamedTuple):
+    """
+    The usage data and the model type.
+    """
+
+    usage: Usage
+    model_name: str
+
+    def __repr__(self):
+        return f"Usage: {self.usage}; Model: {self.model_name}"
 
 def sum_usages(u1: Usage, u2: Usage):
     """

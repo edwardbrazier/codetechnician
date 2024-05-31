@@ -2,7 +2,7 @@
 Utility functions for working with strings, files, and calculating expenses.
 """
 
-from codetechnician.ai_response import Usage
+from codetechnician.ai_response import UsageInfo
 from codetechnician.constants import opus, sonnet, haiku, gpt_4o, all_models
 
 
@@ -30,17 +30,15 @@ def get_size(contents: str) -> str:
     return f"{size:.2f} KB"
 
 
-def calculate_cost(usage: Usage, model_name: str) -> float:
+def calculate_cost(usage_info: UsageInfo) -> float:
     """
     Calculate the cost of a message based on the token usage and model name.
 
     Args:
-        usage (Usage): The token usage for the message.
-        model_name (str): The short name of the model used (e.g., "haiku", "sonnet", "opus").
+        usage_info (UsageInfo): The usage info for the message.
 
     Preconditions:
-        - usage is a valid Usage object.
-        - model_name is one from constants.all_models
+        - usage_info is a valid UsageInfo object.
 
     Side effects:
         None
@@ -52,8 +50,11 @@ def calculate_cost(usage: Usage, model_name: str) -> float:
         float: The cost of the message in USD.
         guarantees: The returned value will be a non-negative float.
     """
-    assert isinstance(usage, Usage), "usage must be a Usage object"
-    assert model_name in all_models, "model_name must be one from constants.all_models"
+    assert isinstance(usage_info, UsageInfo), "usage_info must be a UsageInfo object"
+    assert usage_info.model_name in all_models, "model_name must be one from constants.all_models"
+
+    usage = usage_info.usage
+    model_name = usage_info.model_name
 
     pricing = {haiku: (0.25, 1.25), sonnet: (3.0, 15.0), opus: (15.0, 75.0), gpt_4o: (5.0, 15.0) }
 
@@ -66,17 +67,15 @@ def calculate_cost(usage: Usage, model_name: str) -> float:
     return total_cost
 
 
-def format_cost(usage: Usage, model_name: str) -> str:
+def format_cost(usage_info: UsageInfo) -> str:
     """
     Format the cost and token usage into a colored string.
 
     Args:
-        usage (Usage): The token usage for the message.
-        model_name (str): The short name of the model used (e.g., "haiku", "sonnet", "opus").
+        usage_info (UsageInfo): The token usage for the message.
 
     Preconditions:
-        - usage is a valid Usage object.
-        - model_name is one from constants.all_models
+        - usage_info is a valid UsageInfo object.
 
     Side effects:
         None
@@ -88,8 +87,8 @@ def format_cost(usage: Usage, model_name: str) -> str:
         str: The formatted cost string.
         guarantees: The returned value will be a non-empty string.
     """
-    assert isinstance(usage, Usage), "usage must be a Usage object"
-    assert model_name in all_models, "model_name must be one from constants.all_models"
+    assert isinstance(usage_info, UsageInfo), "usage_info must be a UsageInfo object"
 
-    cost = calculate_cost(usage, model_name)
+    cost = calculate_cost(usage_info)
+    usage = usage_info.usage
     return f"[bold green]Tokens used in this message:[/bold green] Input - {usage.input_tokens}; Output - {usage.output_tokens} [bold green]Cost:[/bold green] ${cost:.4f} USD"
