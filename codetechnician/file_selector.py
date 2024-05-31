@@ -77,6 +77,7 @@ def retrieve_relevant_files(codebases: List[Codebase],  # type: ignore
                 Here is the codebase:\n\n{codebase_xml}\n\n
                 User message:\n{user_message}\n\n
                 Which files from the codebase would be most relevant for answering the user's message? Provide the file paths in JSON format.
+                These must be relative paths, exactly as they are listed in the provided context.
             """
             }
         ]

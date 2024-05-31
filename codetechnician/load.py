@@ -215,21 +215,21 @@ def load_codebase_xml(codebase_locations: List[str], extensions: List[str]) -> s
                         any(file_name.endswith(f".{ext}") for ext in extensions)
                         or not extensions
                     ):
-                        file_path_absolute = os.path.join(root, file_name)
-                        file_path_relative = os.path.relpath(
-                            file_path_absolute, base_path
-                        )
+                        file_path_relative_to_wd = os.path.join(root, file_name)
+                        # file_path_relative = os.path.relpath(
+                        #     file_path_absolute, base_path
+                        # )
 
                         file_loaded = False
                         for encoding in encodings:
                             try:
                                 with open(
-                                    file_path_absolute, "r", encoding=encoding
+                                    file_path_relative_to_wd, "r", encoding=encoding
                                 ) as file:
                                     contents = file.read()
                                     codebase_xml += (
                                         f"<file>\n"
-                                        f"<path>{file_path_relative}</path>\n"
+                                        f"<path>{file_path_relative_to_wd}</path>\n"
                                         f"<content>{contents}</content>\n"
                                         f"</file>\n"
                                     )
@@ -237,12 +237,12 @@ def load_codebase_xml(codebase_locations: List[str], extensions: List[str]) -> s
                                     break
                             except (OSError, IOError) as e:
                                 console.print(
-                                    f"Error reading file {file_path_absolute} with encoding {encoding}: {e}"
+                                    f"Error reading file {file_path_relative_to_wd} with encoding {encoding}: {e}"
                                 )
 
                         if not file_loaded:
                             console.print(
-                                f"Failed to load file {file_path_absolute} with any encoding."
+                                f"Failed to load file {file_path_relative_to_wd} with any encoding."
                             )
 
         codebase_xml += "</codebase_subfolder>\n"

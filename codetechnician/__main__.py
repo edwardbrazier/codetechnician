@@ -15,7 +15,7 @@ from codetechnician import openai_interface
 from codetechnician.interact import *
 from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
-from codetechnician.codebase_watcher import Codebase, amend_codebase_records
+from codetechnician.codebase_watcher import Codebase
 from codetechnician.pure import get_size, format_cost
 from codetechnician.file_selector import retrieve_relevant_files, FileSelectorResponse, FileSelection, MalformedResponse, FileRelativePath # type: ignore
 
@@ -272,55 +272,72 @@ def main(
         console.print(f"Model not supported: {model}")
         sys.exit(1)
 
-    codebase_updates: Optional[CodebaseUpdates] = None
+    # codebase_updates: Optional[CodebaseUpdates] = None
 
     while True:
         user_entry = session.prompt(HTML(f"<b> >>> </b>"))
 
+        console.print(f"Asking {model} for a list of relevant files.")
         selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_entry, []) # type: ignore
+        relevant_files: list[FileRelativePath] = []
 
         if isinstance(selector_response, MalformedResponse):
             console.print("Malformed response from file selector.")
-            continue
         else:
             assert isinstance(selector_response, FileSelection)
-            relevant_files: list[FileRelativePath] = selector_response.files
+            relevant_files = selector_response.files
             console.print(f"[bold green]Relevant files:[/bold green]")
             for file_path in relevant_files:
                 console.print(f"- {file_path}")
             console.print(format_cost(selector_response.usage_data))
-            continue
-            continue
 
         context: Optional[str] = None
 
-        if conversation_history == [] and codebase_updates is None:
+        if len(relevant_files) > 0:
+            try:
+                console.print("Loading relevant files...")
+                context = "Here are the relevant files from the codebase. Read them carefully.\n\n"
+                for file_path in relevant_files:
+                    file_contents = load_file_xml(file_path)
+                    if file_contents:
+                        context += file_contents + "\n\n"
+                    else:
+                        console.print(f"[yellow]Skipping file {file_path} due to loading issues.[/yellow]")
+            except Exception as e:
+                console.print(f"[red]Error loading relevant files: {e}[/red]")
+                console.print("Using content from all files from all specified codebases.")
+                context = (
+                    "Here is a codebase. Read it carefully.\n\n"
+                    "\n\nCodebase:\n" + codebase_initial_contents + "\n\n"
+                )
+        elif conversation_history == []:
+            console.print("Using content from all files from all specified codebases.")
             context = (
                 "Here is a codebase. Read it carefully.\n\n"
                 "\n\nCodebase:\n" + codebase_initial_contents + "\n\n"
             )
-        elif conversation_history != [] and codebase_updates is None:
-            context = ""
-        elif conversation_history == [] and codebase_updates is not None:
-            context = """
-                Here is the initial codebase. Read it carefully.\n{}\n
-                Changes observed when reloading codebase: \n{}\n
-                """.format(
-                codebase_initial_contents,
-                codebase_updates.change_descriptive.change_contents,
-            )
-            codebases = amend_codebase_records(
-                codebases, codebase_updates.codebase_changes
-            )
-            codebase_updates = None
-        elif conversation_history != [] and codebase_updates is not None:
-            context = "Changes observed when reloading codebase: \n{}".format(
-                codebase_updates.change_descriptive.change_contents
-            )
-            codebases = amend_codebase_records(
-                codebases, codebase_updates.codebase_changes
-            )
-            codebase_updates = None
+        # elif conversation_history != [] and codebase_updates is None:
+        #     context = ""
+        # elif conversation_history == [] and codebase_updates is not None:
+        #     context = """
+        #         Here is the initial codebase. Read it carefully.\n{}\n
+        #         Changes observed when reloading codebase: \n{}\n
+        #         """.format(
+        #         codebase_initial_contents,
+        #         codebase_updates.change_descriptive.change_contents,
+        #     )
+        #     codebases = amend_codebase_records(
+        #         codebases, codebase_updates.codebase_changes
+        #     )
+        #     codebase_updates = None
+        # elif conversation_history != [] and codebase_updates is not None:
+        #     context = "Changes observed when reloading codebase: \n{}".format(
+        #         codebase_updates.change_descriptive.change_contents
+        #     )
+        #     codebases = amend_codebase_records(
+        #         codebases, codebase_updates.codebase_changes
+        #     )
+        #     codebase_updates = None
 
         prompt_outcome = prompt_user(
             client,  # type: ignore
@@ -344,7 +361,8 @@ def main(
             # TODO: Handle cases where there are multiple updates in a row
             # in between a pair of messages to the AI.
             # Need to get both the contents of the files and the descriptions of the changes to the AI in that case.
-            codebase_updates = prompt_outcome
+            # codebase_updates = prompt_outcome
+            pass
         else:
             conversation_history = prompt_outcome  # type: ignore
 
