@@ -28,7 +28,11 @@ class FileSelection:
     files: list[FileRelativePath]
     usage_data: UsageInfo
 
+# Represents files that the file selector specified
 FileSelectorResponse = Union[FileSelection, MalformedResponse]
+
+# Represents files to load
+FileSelectionOutcome = Union[FileSelection, MalformedResponse]
 
 RAG_SYSTEM_PROMPT = """Output only JSON, in this format: 
 {
@@ -92,7 +96,7 @@ def retrieve_relevant_files(codebases: List[Codebase],  # type: ignore
     if validate_json_schema(json_data):
         parse_output = parse_json_response(json_data) 
         if isinstance(parse_output, list):
-            return FileSelection(files=parse_output, usage_data=UsageInfo(response.usage, model_name=model))
+            return FileSelection(files=parse_output, usage_data=response.usage)
         else:
             assert isinstance(parse_output, MalformedResponse)
             return parse_output

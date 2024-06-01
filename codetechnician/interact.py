@@ -24,7 +24,7 @@ from codetechnician.constants import (
 from codetechnician import openai_interface
 from codetechnician import anthropic_interface
 from codetechnician.ai_response import ChatResponse, UsageInfo #  CodeResponse, 
-from codetechnician.pure import format_cost, get_model_long_name
+from codetechnician.pure import format_cost, get_model_long_name, calculate_cost
 from codetechnician.codebase_watcher import (
     Codebase,
     # CodebaseUpdates,
@@ -32,7 +32,7 @@ from codetechnician.codebase_watcher import (
     # find_codebase_change_contents,
     # num_affected_files,
 )
-from codetechnician.file_selector import FileSelectorResponse, FileRelativePath, MalformedResponse, FileSelection, retrieve_relevant_files
+from codetechnician.file_selector import FileSelectorResponse, FileRelativePath, MalformedResponse, FileSelection, retrieve_relevant_files, FileSelectionOutcome
 from codetechnician.load import load_file_xml
 from codetechnician.command_parser import (parse_input, Message, OutputCommand, UpdateCommand, ModelInstruction, PlainTextCommand, FileSelectorCommand, ParseError, CostCommand, QuitCommand, ResetCommand, EmptyInput)
 from codetechnician import ai_clients
@@ -79,6 +79,16 @@ class AIError:
     error_text: str
 
 MessageResult = Union[ChatResponse, AIError]
+
+@dataclass
+class MessageResultWithFileSelection:
+    """
+    Represents the result of selecting the files to load and then sending a message to the main AI.
+    """
+    all_files_loaded_in_conversation: set[FileRelativePath]
+    response_text: str
+    cost: float
+    new_messages: ConversationHistory
 
 def prompt_user(
     session: PromptSession[str]
@@ -215,7 +225,7 @@ def message_ai_no_codebase(
         user_message: str,
 ) -> MessageResult:
     """
-    Messages the AI, prints the result and prints the cost estimate.
+    Messages the AI, gets the result and gets the cost estimate.
     This is a wrapper around the prompt_ai() functions in anthropic_interface and openai_interface,
     but this method selects the relevant client based on the model name.
 
@@ -252,6 +262,112 @@ def message_ai_no_codebase(
     else:
         return chat_response_optional
 
+def message_ai_including_file_selection(
+        clients: ai_clients.Clients,
+        model: str,
+        conversation_history: ConversationHistory,
+        system_prompt_general: str,
+        user_message: str,
+        codebases: list[Codebase],
+        codebase_contents: Optional[str],
+        loaded_files: set[FileRelativePath],
+        file_extensions: list[str],
+) -> Union[MessageResultWithFileSelection, AIError]:
+    """
+    Applies the file selector, loads the files and then messages the AI.
+    Prints the results.
+    """
+    assert isinstance(clients, ai_clients.Clients)
+    assert isinstance(model, str)
+    assert isinstance(conversation_history, list)
+    assert isinstance(system_prompt_general, str)
+    assert isinstance(user_message, str)
+    assert isinstance(codebases, list)
+    assert isinstance(file_extensions, list)
+
+    # Select files
+    file_selection_outcome = apply_file_selector(clients, codebases, codebase_contents, conversation_history, loaded_files, user_message)
+
+    if isinstance(file_selection_outcome, MalformedResponse):
+        return AIError(f"Malformed response from file selector AI.")
+
+    assert isinstance(file_selection_outcome, FileSelection)
+
+    files_to_load: set[FileRelativePath] = set(file_selection_outcome.files).difference(loaded_files)
+    all_files_loaded_in_conversation: set[FileRelativePath] = set(file_selection_outcome.files).union(loaded_files)
+
+    # console.print(f"Files to load: {files_to_load}")
+
+    context: Optional[str] = None
+
+    # Load files
+    if len(files_to_load) > 0:
+        try:
+            context = "Here are the relevant files from the codebase. Read them carefully.\n\n"
+            for file_path in files_to_load:
+                file_contents = load_file_xml(file_path)
+                if file_contents:
+                    context += file_contents + "\n\n"
+                else:
+                    console.print(f"[yellow]Skipping file {file_path} due to loading issues.[/yellow]")
+            
+            context += "\n"
+        except Exception as e:
+            console.print(f"[red]Error loading relevant files: {e}[/red]")
+            console.print("Using empty context.")
+            context = None
+    else:
+        context = None
+
+    # Message the main AI
+    client_optional: Optional[ai_clients.GenericClient] = select_client(clients, model)
+    chat_response_optional: Optional[ChatResponse] = None
+
+    if client_optional is None:
+        return AIError(f"No client available for model {model}.")
+    else:
+        assert isinstance(client_optional, ai_clients.GenericClient)
+        client = client_optional
+
+        context_notnone: str
+        if context is not None:
+            context_notnone = context
+        else:
+            context_notnone = ""
+
+        full_user_message = {"role": "user", "content": context_notnone + user_message}
+
+        messages = conversation_history + [full_user_message]
+
+        if isinstance(client, anthropic.Client):
+            chat_response_optional = anthropic_interface.prompt_ai(client, model, messages, system_prompt_general) 
+        elif isinstance(client, openai.OpenAI):
+            chat_response_optional = openai_interface.prompt_ai(client, model, messages, system_prompt_general)
+        else:
+            return AIError(f"Model {model} is not supported.")
+
+    if chat_response_optional is None:
+        return AIError(f"No response received from the AI.")
+    else:
+        assert isinstance(chat_response_optional, ChatResponse)
+
+        response_text: str = chat_response_optional.content_string
+        file_selector_usage_info: UsageInfo = file_selection_outcome.usage_data
+        main_usage_info: UsageInfo = chat_response_optional.usage
+        total_cost: float = calculate_cost(file_selector_usage_info) + calculate_cost(main_usage_info)
+
+        print_chat_response(chat_response_optional)
+
+        new_messages: ConversationHistory = [
+            full_user_message,
+            {"role": "assistant", "content": response_text},
+        ]
+
+        return MessageResultWithFileSelection(
+            all_files_loaded_in_conversation, response_text, total_cost, new_messages)
+
+    
+
 def print_chat_response(
     chat_response: ChatResponse
 ) -> None:
@@ -264,140 +380,183 @@ def print_chat_response(
     usage = chat_response.usage  # type: ignore
     console.print(format_cost(usage))  # type: ignore
 
-def message_ai(
-    client,  # type: ignore
-    state: MainLoopState,
-    user_message: Optional[str],
-    apply_file_selector: bool,
-    output_dir_notnone: str,
-    force_overwrite: bool,
-    user_system_prompt_code: str,
-    system_prompt_general: str,
-    codebases: list[Codebase],
-    file_extensions: list[str],
-) -> tuple[Optional[str], Optional[UsageInfo]]: # BAD. DEFINE A NEW TYPE FOR THIS.
+def apply_file_selector(
+        clients: ai_clients.Clients,
+        codebases: list[Codebase],
+        codebase_contents: Optional[str],
+        conversation_history: ConversationHistory,
+        loaded_files: set[FileRelativePath],
+        user_message: str,
+) -> FileSelectionOutcome:
     """
-    Send a message to the AI and return its response.
-
-    Args:
-        client: The client instance for the main AI.
-        state (MainLoopState): The current state of the main loop.
-        user_message (Optional[str]): The user's message to send to the AI, if any.
-        apply_file_selector (bool): Whether to apply the file selector AI to choose relevant files.
-        output_dir_notnone (str): The output directory for generated files when using the /o command.
-        force_overwrite (bool): Whether to force overwrite of output files if they already exist.
-        user_system_prompt_code (str): The user's part of the system prompt to use for code generation,
-                                    additional to the hardcoded coder system prompt.
-        system_prompt_general (str): The system prompt to use for general conversation.
-        codebases (list[Codebase]): A list of Codebases being watched.
-        file_extensions (list[str]): A list of file extensions to watch for in the codebases.
-
-    Preconditions:
-        - The `client` is a valid client instance for the AI API.
-        - The `state` object contains the current conversation history and other relevant data.
-        - If `user_message` is provided, it is a non-empty string.
-        - `output_dir_notnone` is a valid directory path.
-        - `user_system_prompt_code` and `system_prompt_general` are non-empty strings.
-        - `codebases` is a list of valid Codebase objects.
-        - `file_extensions` is a list of valid file extension strings.
-
-    Side effects:
-        - Sends a request to the AI API.
-        - Prints progress and results to the console.
-        - May write generated files to the output directory if using the /o command.
-        (TODO: CHANGE THIS. THAT'S BEST SEPARATE INTO ANOTHER FUNCTION.)
-
-    Exceptions:
-        None
-
-    Returns:
-        tuple[Optional[str], Optional[UsageInfo]]: A tuple containing the AI's response string (if any) 
-                                                   and usage information (if any).
+    Asks the file selector AI for a list of relevant files  to load.
+    Prints the list to the console.
+    Provides the list.
     """
-    if user_message is None:
-        return None, None
+    assert isinstance(clients, ai_clients.Clients)
+    assert isinstance(codebases, list)
+    assert isinstance(codebase_contents, str)
+    assert isinstance(conversation_history, list)
+    assert isinstance(loaded_files, set)
+    assert isinstance(user_message, str)
 
-    relevant_files: list[FileRelativePath] = []
-    selector_usage: Optional[UsageInfo] = None
+    console.print(f"Asking file selection AI for a list of relevant files.")
 
-    if apply_file_selector:
-        console.print(f"Asking file selection AI for a list of relevant files.")
-        selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_message, state.conversation_history)  # type: ignore
+    # TODO: Don't reload the codebases every time!
+    selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_message, conversation_history)  # type: ignore
 
-        if isinstance(selector_response, MalformedResponse):
-            console.print("Malformed response from file selector.")
-        else:
-            assert isinstance(selector_response, FileSelection)
-            relevant_files = selector_response.files
-            console.print(f"[bold green]Relevant files:[/bold green] [white not bold](according to {selector_response.usage_data.model_name})[/white not bold]")
-            for file_path in relevant_files:
-                console.print(f"- {file_path}")
-            selector_usage = selector_response.usage_data
-            console.print(format_cost(selector_usage))
-            console.line()
-
-            already_loaded_files = set(relevant_files) & state.loaded_files
-            console.print(f"[bold green]The following files are already in the conversation history:[/bold green]")
-            for file_path in already_loaded_files:
-                console.print(f"- {file_path}")
-            
-            files_to_load = set(relevant_files) - already_loaded_files
-            console.print(f"[bold green]Loading these remaining files:[/bold green]")
-            for file_path in files_to_load:
-                console.print(f"- {file_path}")
+    if isinstance(selector_response, MalformedResponse):
+        console.print("Malformed response from file selector AI.")
+        return MalformedResponse
     else:
-        files_to_load = set()
+        assert isinstance(selector_response, FileSelection)
 
-    context: Optional[str] = None
+        relevant_files = selector_response.files
+        console.print(f"[bold green]Relevant files:[/bold green] [white not bold](according to {selector_response.usage_data.model_name})[/white not bold]")
 
-    if len(files_to_load) > 0:
-        try:
-            context = "Here are the relevant files from the codebase. Read them carefully.\n\n"
-            for file_path in files_to_load:
-                file_contents = load_file_xml(file_path)
-                if file_contents:
-                    context += file_contents + "\n\n"
-                else:
-                    console.print(f"[yellow]Skipping file {file_path} due to loading issues.[/yellow]")
-        except Exception as e:
-            console.print(f"[red]Error loading relevant files: {e}[/red]")
-            console.print("Using content from all files from all specified codebases.")
-            context = state.codebase_contents
-    else:
-        context = state.codebase_contents
+        if len(relevant_files) == 0:
+            console.print("Nil.")
 
-    new_messages: list[dict[str, str]]
+        for file_path in relevant_files:
+            console.print(f"- {file_path}")
 
-    if context is not None:
-        new_messages = [
-                {"role": "user", "content": context + user_message}
-            ]
-    else:
-        new_messages = [
-                {"role": "user", "content": user_message}
-            ]
+        selector_usage: UsageInfo = selector_response.usage_data
+        console.print(format_cost(selector_usage))
+        console.line()
 
-    messages = state.conversation_history + new_messages
-    chat_response_optional: Optional[ChatResponse] = None
+        already_loaded_files = set(relevant_files) & loaded_files
+        console.print(f"[bold green]Of the above, the following files are already in the conversation history:[/bold green]")
 
-    if state.main_model in anthropic_models_long:
-        chat_response_optional = None
-        # chat_response_optional = anthropic_interface.prompt_ai(client, state.main_model, messages, system_prompt_general)  # type: ignore
-    elif state.main_model in openai_models_long:
-        chat_response_optional = openai_interface.prompt_ai(client, state.main_model, messages, system_prompt_general)  # type: ignore
-    else:
-        console.print(f"[bold red]Unsupported model: {state.main_model}[/bold red]")
-        return None, None
+        if len(already_loaded_files) == 0:
+            console.print("Nil.")
 
-    if chat_response_optional is None:
-        console.print("[bold red]Failed to get a response from the AI.[/bold red]")
-        return None, None
-    else:
-        print_markdown(console, chat_response_optional.content_string)  # type: ignore
-        response_string = chat_response_optional.content_string  # type: ignore
-        usage = chat_response_optional.usage  # type: ignore
-        console.print(format_cost(UsageInfo(usage, state.main_model)))  # type: ignore
-        return response_string, UsageInfo(usage, state.main_model)
+        for file_path in already_loaded_files:
+            console.print(f"- {file_path}")
+        
+        files_to_load = set(relevant_files) - already_loaded_files
+        console.print(f"[bold green]Additional files to load:[/bold green]")
+
+        if len(files_to_load) == 0:
+            console.print("Nil.")
+
+        for file_path in files_to_load:
+            console.print(f"- {file_path}")
+        
+        console.line()
+
+        return FileSelection(list(files_to_load), selector_response.usage_data)
+
+# def message_ai(
+#     client,  # type: ignore
+#     state: MainLoopState,
+#     user_message: Optional[str],
+#     apply_file_selector: bool,
+#     output_dir_notnone: str,
+#     force_overwrite: bool,
+#     user_system_prompt_code: str,
+#     system_prompt_general: str,
+#     codebases: list[Codebase],
+#     file_extensions: list[str],
+# ) -> tuple[Optional[str], Optional[UsageInfo]]: # BAD. DEFINE A NEW TYPE FOR THIS.
+#     """
+#     Send a message to the AI and return its response.
+
+#     Args:
+#         client: The client instance for the main AI.
+#         state (MainLoopState): The current state of the main loop.
+#         user_message (Optional[str]): The user's message to send to the AI, if any.
+#         apply_file_selector (bool): Whether to apply the file selector AI to choose relevant files.
+#         output_dir_notnone (str): The output directory for generated files when using the /o command.
+#         force_overwrite (bool): Whether to force overwrite of output files if they already exist.
+#         user_system_prompt_code (str): The user's part of the system prompt to use for code generation,
+#                                     additional to the hardcoded coder system prompt.
+#         system_prompt_general (str): The system prompt to use for general conversation.
+#         codebases (list[Codebase]): A list of Codebases being watched.
+#         file_extensions (list[str]): A list of file extensions to watch for in the codebases.
+
+#     Preconditions:
+#         - The `client` is a valid client instance for the AI API.
+#         - The `state` object contains the current conversation history and other relevant data.
+#         - If `user_message` is provided, it is a non-empty string.
+#         - `output_dir_notnone` is a valid directory path.
+#         - `user_system_prompt_code` and `system_prompt_general` are non-empty strings.
+#         - `codebases` is a list of valid Codebase objects.
+#         - `file_extensions` is a list of valid file extension strings.
+
+#     Side effects:
+#         - Sends a request to the AI API.
+#         - Prints progress and results to the console.
+#         - May write generated files to the output directory if using the /o command.
+#         (TODO: CHANGE THIS. THAT'S BEST SEPARATE INTO ANOTHER FUNCTION.)
+
+#     Exceptions:
+#         None
+
+#     Returns:
+#         tuple[Optional[str], Optional[UsageInfo]]: A tuple containing the AI's response string (if any) 
+#                                                    and usage information (if any).
+#     """
+#     if user_message is None:
+#         return None, None
+
+#     relevant_files: list[FileRelativePath] = []
+#     selector_usage: Optional[UsageInfo] = None
+
+#     if apply_file_selector:
+#         # ...
+#     else:
+#         files_to_load = set()
+
+#     context: Optional[str] = None
+
+#     if len(files_to_load) > 0:
+#         try:
+#             context = "Here are the relevant files from the codebase. Read them carefully.\n\n"
+#             for file_path in files_to_load:
+#                 file_contents = load_file_xml(file_path)
+#                 if file_contents:
+#                     context += file_contents + "\n\n"
+#                 else:
+#                     console.print(f"[yellow]Skipping file {file_path} due to loading issues.[/yellow]")
+#         except Exception as e:
+#             console.print(f"[red]Error loading relevant files: {e}[/red]")
+#             console.print("Using content from all files from all specified codebases.")
+#             context = state.codebase_contents
+#     else:
+#         context = state.codebase_contents
+
+#     new_messages: list[dict[str, str]]
+
+#     if context is not None:
+#         new_messages = [
+#                 {"role": "user", "content": context + user_message}
+#             ]
+#     else:
+#         new_messages = [
+#                 {"role": "user", "content": user_message}
+#             ]
+
+#     messages = state.conversation_history + new_messages
+#     chat_response_optional: Optional[ChatResponse] = None
+
+#     if state.main_model in anthropic_models_long:
+#         chat_response_optional = None
+#         # chat_response_optional = anthropic_interface.prompt_ai(client, state.main_model, messages, system_prompt_general)  # type: ignore
+#     elif state.main_model in openai_models_long:
+#         chat_response_optional = openai_interface.prompt_ai(client, state.main_model, messages, system_prompt_general)  # type: ignore
+#     else:
+#         console.print(f"[bold red]Unsupported model: {state.main_model}[/bold red]")
+#         return None, None
+
+#     if chat_response_optional is None:
+#         console.print("[bold red]Failed to get a response from the AI.[/bold red]")
+#         return None, None
+#     else:
+#         print_markdown(console, chat_response_optional.content_string)  # type: ignore
+#         response_string = chat_response_optional.content_string  # type: ignore
+#         usage = chat_response_optional.usage  # type: ignore
+#         console.print(format_cost(UsageInfo(usage, state.main_model)))  # type: ignore
+#         return response_string, UsageInfo(usage, state.main_model)
 
 def main_loop(
     clients: ai_clients.Clients, 
@@ -485,10 +644,18 @@ def main_loop(
 
             user_message = action.message
             
-            message_result = message_ai_no_codebase(clients, state.main_model, state.conversation_history, system_prompt_general, user_message)
+            # message_result = message_ai_no_codebase(clients, state.main_model, state.conversation_history, system_prompt_general, user_message)
+
+            message_result = message_ai_including_file_selection(\
+                clients, state.main_model, state.conversation_history, \
+                    system_prompt_general, user_message, codebases, state.codebase_contents, state.loaded_files, file_extensions)
 
             if isinstance(message_result, AIError):
                 console.print(message_result.error_text)
                 continue
-            else:
-                print_chat_response(message_result)
+
+            assert isinstance(message_result, MessageResultWithFileSelection)
+
+            state.loaded_files = message_result.all_files_loaded_in_conversation
+            state.cumulative_cost += message_result.cost
+            state.conversation_history += message_result.new_messages

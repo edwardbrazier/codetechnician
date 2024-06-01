@@ -3,7 +3,7 @@ Utility functions for working with strings, files, and calculating expenses.
 """
 
 from typing import Optional
-from codetechnician.ai_response import UsageInfo
+from codetechnician.ai_response import UsageInfo, Usage
 from codetechnician.constants import opus, sonnet, haiku, gpt_4o, model_mapping, all_models
 
 
@@ -61,8 +61,10 @@ def calculate_cost(usage_info: UsageInfo) -> float:
 
     input_cost_per_million, output_cost_per_million = pricing[model_name]
 
-    input_cost = usage.input_tokens * input_cost_per_million / 1_000_000
-    output_cost = usage.output_tokens * output_cost_per_million / 1_000_000
+    # assert isinstance(usage, Usage)
+
+    input_cost = usage_info.usage.input_tokens * input_cost_per_million / 1_000_000
+    output_cost = usage_info.usage.output_tokens * output_cost_per_million / 1_000_000
 
     total_cost = input_cost + output_cost
     return total_cost
