@@ -72,4 +72,4 @@ Or like this, to define distinct new types in a way that allows a static type ch
 
 Related practises are also acceptable, such as type aliases and type comments. 
 
-All comments must be in Australian English, using for example 'utilise' rather than 'utilize'.
+All comments must be in Australian English, using for example 'utilise' rather than 'utilize' and 'initialise' instead of 'initialize'.

@@ -2,8 +2,9 @@
 Utility functions for working with strings, files, and calculating expenses.
 """
 
+from typing import Optional
 from codetechnician.ai_response import UsageInfo
-from codetechnician.constants import opus, sonnet, haiku, gpt_4o, all_models
+from codetechnician.constants import opus, sonnet, haiku, gpt_4o, model_mapping, all_models
 
 
 def get_size(contents: str) -> str:
@@ -96,3 +97,30 @@ def format_cost(usage_info: UsageInfo) -> str:
             f"Output - {usage.output_tokens} [bold green] " + \
             f"Cost:[/bold green] ${cost:.4f} USD " + \
             f"([white not bold]{usage_info.model_name})[/white not bold]"
+
+def get_model_long_name(model_short_name: str) -> Optional[str]:
+    """
+    Get the long name of a model from its short name.
+
+    Args:
+        model_short_name (str): The short name of the model (e.g., "haiku", "sonnet", "opus").
+
+    Preconditions:
+        - model_short_name is a string
+
+    Side effects:
+        None
+
+    Exceptions:
+        None
+
+    Returns:
+        Optional[str]: The long name of the model if it exists, otherwise None.
+        guarantees: The returned value will be a non-None string.
+    """
+    assert isinstance(model_short_name,str)
+    
+    if model_short_name in model_mapping.keys():
+        return model_mapping.get(model_short_name)
+    else:
+        return None

@@ -16,15 +16,15 @@ from codetechnician.ai_response import (
     CodeResponse,
     ChatResponse,
     Usage,
+    UsageInfo,
     FileData
 )
 
 
-def setup_client(api_key: str):
+def setup_client():
     """
     Set up the AI client.
     """
-    assert isinstance(api_key, str), "api_key must be a string"
     client = OpenAI()
     return client
 
@@ -99,7 +99,7 @@ def prompt_ai(
         else:
             return ChatResponse(
                 content_string=content_string,
-                usage=Usage(prompt_tokens, completion_tokens),
+                usage=UsageInfo(Usage(prompt_tokens, completion_tokens), model),
             )
 
 

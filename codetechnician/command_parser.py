@@ -4,9 +4,10 @@ Contains a parser for interpreting the user's input.
 The parser supports the following commands:
 - Output command (/o): Instructs the AI to generate code output.
 - Update command (/u): Triggers an update of the codebase state.
-- Plain text command (/p): Sends a plain text message to the AI.
+- Plain text command (/p): Toggle plain text mode.
 - File selector command (/fs): Toggles the file selector functionality.
 - Model instruction (@<model>): Specifies the AI model to use for the interaction.
+- Cost command (/c): Displays the cumulative cost of the conversation so far.
 
 If the input does not match any known command, it is treated as a regular message.
 
@@ -21,54 +22,112 @@ Classes:
     ModelInstruction: Represents a model instruction with the model name and message.
     PlainTextCommand: Represents a plain text command with an associated message.
     FileSelectorCommand: Represents a file selector command.
+    CostCommand: Represents a command to display the cumulative cost of the conversation.
     Error: Represents an error with an error message.
 """
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Optional, Union
 
 # List of known models
 KNOWN_MODELS = ["gpt-4o", "gpt-3.5", "haiku", "sonnet", "opus"]
 
 # Data classes
-@dataclass
-class Message:
-    """Represents a regular message."""
-    content: str
 
 @dataclass
-class OutputCommand:
+class AbstractMessage:
+    message: str
+
+@dataclass
+class Message(AbstractMessage):
+    """Represents a regular message."""
+
+    pass
+
+
+@dataclass
+class OutputCommand(AbstractMessage):
     """Represents an output command with an associated message."""
-    message: Message
+
+    pass
+
+
+@dataclass
+class PlainTextCommand:
+    """Represents a command to toggle plain text mode."""
+
+    pass
+
 
 @dataclass
 class UpdateCommand:
     """Represents an update command."""
+
     pass
+
 
 @dataclass
 class ModelInstruction:
     """Represents a model instruction with the model name and message."""
+
     model_name: str
-    message: Message
+    message: Optional[Message] = None
+
 
 @dataclass
-class PlainTextCommand:
-    """Represents a plain text command with an associated message."""
-    message: Message
-
-@dataclass 
 class FileSelectorCommand:
     """Represents a file selector command."""
+
     pass
 
+
 @dataclass
-class Error:
+class CostCommand:
+    """Represents a command to display the cumulative cost of the conversation."""
+
+    pass
+
+
+@dataclass
+class QuitCommand:
+    """Represents a command to quit the program."""
+
+    pass
+
+
+@dataclass
+class ResetCommand:
+    """Represents a command to reset the conversation history."""
+
+    pass
+
+
+@dataclass
+class ParseError:
     """Represents an error with an error message."""
+
     error_message: str
 
-CommandType = Union[OutputCommand, UpdateCommand, ModelInstruction, PlainTextCommand, FileSelectorCommand, Message]
-ParserOutput = Union[CommandType, Error]
+@dataclass
+class EmptyInput:
+    """Represents an empty input."""
+
+    pass
+
+CommandType = Union[
+    OutputCommand,
+    UpdateCommand,
+    ModelInstruction,
+    PlainTextCommand,
+    FileSelectorCommand,
+    CostCommand,
+    QuitCommand,
+    ResetCommand,
+    Message,
+    EmptyInput
+]
+ParserOutput = Union[CommandType, ParseError]
+
 
 # Parser function
 def parse_input(input_str: str) -> ParserOutput:
@@ -83,26 +142,41 @@ def parse_input(input_str: str) -> ParserOutput:
     """
     input_str = input_str.strip()
 
+    # Check for empty input
+    if input_str == "":
+        return EmptyInput()
+
     # Check for output command
     if input_str.lower().startswith("/o "):
         message_content = input_str[3:].strip()
-        return OutputCommand(Message(message_content))
+        return OutputCommand(message=message_content)
 
     # Check for update command
     elif input_str.lower().startswith("/u"):
         return UpdateCommand()
 
-    # Check for plain text command 
+    # Check for plain text command
     elif input_str.lower().startswith("/p"):
-        message_content = input_str[3:].strip()
-        return PlainTextCommand(Message(message_content))
+        return PlainTextCommand()
 
     # Check for file selector command
     elif input_str.lower().startswith("/fs"):
         return FileSelectorCommand()
 
+    # Check for cost command
+    elif input_str.lower().startswith("/c"):
+        return CostCommand()
+
+    # Check for quit command
+    elif input_str.lower().startswith("/q"):
+        return QuitCommand()
+
+    # Check for reset command
+    elif input_str.lower().startswith("/r"):
+        return ResetCommand()
+
     # Check for model instruction
-    elif input_str.lower().startswith("@"): 
+    elif input_str.lower().startswith("@"):
         parts = input_str.split(" ", 1)
         model_name = parts[0][1:].lower()
         if model_name in KNOWN_MODELS:
@@ -110,18 +184,18 @@ def parse_input(input_str: str) -> ParserOutput:
                 message_content = parts[1].strip()
                 return ModelInstruction(model_name, Message(message_content))
             else:
-                return Error("Missing message for model instruction")
+                return ModelInstruction(model_name, None)
         else:
-            return Error(f"Invalid model '{model_name}'")
+            return ParseError(f"Invalid model '{model_name}'")
 
     # Check for invalid command
     elif input_str.startswith("/"):
         # Get the first word of the line
         first_word = input_str.split(" ", 1)[0]
-        return Error(f"Invalid command '{first_word}'")
+        return ParseError(f"Invalid command '{first_word}'")
 
     # Regular message
     else:
         return Message(input_str)
 
-    return Error("Invalid input")
+    return ParseError("Invalid input")

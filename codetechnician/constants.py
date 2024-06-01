@@ -31,6 +31,13 @@ openai_models_long = [gpt_4o]
 
 all_models = anthropic_models_long + openai_models_long
 
+model_mapping: dict[str, str] = {
+    "opus": opus,
+    "sonnet": sonnet,
+    "haiku": haiku,
+    "gpt-4o": gpt_4o,
+}
+
 DEFAULT_CONFIG = {
     "supplier": "anthropic",
     "anthropic-api-key": "<INSERT YOUR ANTHROPIC API KEY HERE>",

@@ -11,13 +11,13 @@ import sys
 from prompt_toolkit import PromptSession
 from typing import Optional
 
-from codetechnician import openai_interface
 from codetechnician.interact import *
 from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
 from codetechnician.codebase_watcher import Codebase
 from codetechnician.pure import get_size
 from codetechnician.file_selector import retrieve_relevant_files, FileSelectorResponse, FileSelection, MalformedResponse, FileRelativePath # type: ignore
+from codetechnician.ai_clients import Clients, initialise_ai_clients
 
 
 @click.command()
@@ -44,7 +44,7 @@ from codetechnician.file_selector import retrieve_relevant_files, FileSelectorRe
     "-m",
     "--model",
     "model",
-    help="Set the model. Presently, the default and the only supported option is 'gpt-4o'.",
+    help="Set the model. Supported: Anthropic's Claude series ('haiku', 'sonnet', 'opus'). OpenAI: gpt-4o",
     required=False,
 )
 @click.option(
@@ -135,9 +135,9 @@ def main(
         sys.exit(1)
 
     model_mapping: dict[str, str] = {
-        # "opus": constants.opus,
-        # "sonnet": constants.sonnet,
-        # "haiku": constants.haiku,
+        "opus": constants.opus,
+        "sonnet": constants.sonnet,
+        "haiku": constants.haiku,
         "gpt-4o": constants.gpt_4o,
     }
 
@@ -213,6 +213,17 @@ def main(
             console.print(
                 f"Codebase contents size: [green bold]{codebase_contents_desc}[/green bold]"
             )
+
+            file_selector_input_limit_bytes = 200_000 * 5  # Assuming 5 bytes per token
+            file_selector_input_limit_mb = file_selector_input_limit_bytes / (1024 * 1024)
+            console.print(
+                f"Input size limit for file selector model is approximately [green bold]{file_selector_input_limit_mb:.2f} MB[/green bold]"
+            )
+
+            if len(codebase_initial_contents) > file_selector_input_limit_bytes:
+                console.print(
+                    "[yellow]Codebase size is larger than input limit for the file selector model. May not be able to supply the codebase to the AI.[/yellow]"
+                )
         
 
     if coder_system_prompt_user is None:
@@ -263,44 +274,39 @@ def main(
         f"Code files from the AI will be written to this folder: [bold green]{output_dir_notnone}[/bold green]\n"
     )
 
-    if config["model"] in constants.anthropic_models_long:
-        sys.exit(1)
-        # client = anthropic_interface.setup_client(api_key)
-    elif config["model"] in constants.openai_models_long:
-        client = openai_interface.setup_client(api_key)
-    else:
-        console.print(f"Model not supported: {model}")
-        sys.exit(1)
+    # if config["model"] in constants.anthropic_models_long:
+    #     sys.exit(1)
+    #     # client = anthropic_interface.setup_client(api_key)
+    # elif config["model"] in constants.openai_models_long:
+    #     client = openai_interface.setup_client(api_key)
+    # else:
+    #     console.print(f"Model not supported: {model}")
+    #     sys.exit(1)
 
-    # codebase_updates: Optional[CodebaseUpdates] = None
+    # Initialise as many AI clients as possible.
+    clients: Clients = initialise_ai_clients()
 
-    while True:
-        prompt_outcome = prompt_user(
-            client,  # type: ignore
-            codebase_initial_contents,
-            conversation_history,
-            session,
-            config,
-            output_dir_notnone,
-            force,
-            user_system_prompt_code,
-            system_prompt_general,
-            codebases,
-            extensions,
-        )
-        if isinstance(prompt_outcome, UserPromptOutcome):
-            if prompt_outcome == UserPromptOutcome.CONTINUE:
-                continue
-            else:
-                break
-        if isinstance(prompt_outcome, CodebaseUpdates):
-            # TODO: Handle cases where there are multiple updates in a row
-            # in between a pair of messages to the AI.
-            # Need to get both the contents of the files and the descriptions of the changes to the AI in that case.
-            # codebase_updates = prompt_outcome
-            pass
-        else:
-            conversation_history = prompt_outcome  # type: ignore
+    initial_state = MainLoopState(
+        conversation_history=conversation_history,
+        codebase_contents=codebase_initial_contents,
+        main_model=config["model"], # type: ignore
+        cumulative_cost=0.0,
+        loaded_files=set(),
+        file_selector_enabled=True,
+        plain_text_enabled=False,
+    )
+
+    main_loop(
+        clients,
+        initial_state,
+        session,
+        output_dir_notnone,
+        force,
+        user_system_prompt_code,
+        system_prompt_general,
+        codebases,
+        extensions,
+    )
 
 
 if __name__ == "__main__":

@@ -65,7 +65,7 @@ class CodeResponse(NamedTuple):
 
     content_string: str
     file_data_list: list[FileData]
-    usage: Usage
+    usage: UsageInfo
 
 
 class ChatResponse(NamedTuple):
@@ -74,4 +74,4 @@ class ChatResponse(NamedTuple):
     """
 
     content_string: str
-    usage: Usage
+    usage: UsageInfo

@@ -13,6 +13,7 @@ from codetechnician.ai_response import (
     CodeResponse,
     ChatResponse,
     Usage,
+    UsageInfo,
     sum_usages,
 )
 from codetechnician.printing import console
@@ -112,7 +113,7 @@ def prompt_ai(
         else:
             return ChatResponse(
                 content_string=content_string,
-                usage=Usage(response.usage.input_tokens, response.usage.output_tokens),
+                usage=UsageInfo(Usage(response.usage.input_tokens, response.usage.output_tokens), model)
             )
 
 
