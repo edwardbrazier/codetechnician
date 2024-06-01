@@ -71,7 +71,7 @@ class ModelInstruction:
     """Represents a model instruction with the model name and message."""
 
     model_name: str
-    message: Optional[Message] = None
+    message: Optional[str] = None
 
 
 @dataclass
@@ -182,7 +182,7 @@ def parse_input(input_str: str) -> ParserOutput:
         if model_name in KNOWN_MODELS:
             if len(parts) > 1:
                 message_content = parts[1].strip()
-                return ModelInstruction(model_name, Message(message_content))
+                return ModelInstruction(model_name, message_content)
             else:
                 return ModelInstruction(model_name, None)
         else:

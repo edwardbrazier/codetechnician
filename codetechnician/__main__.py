@@ -15,7 +15,7 @@ from codetechnician.interact import *
 from codetechnician import constants
 from codetechnician.load import load_codebase_state, load_codebase_xml_, load_config, load_file_xml  # type: ignore
 from codetechnician.codebase_watcher import Codebase
-from codetechnician.pure import get_size
+from codetechnician.pure import get_size, get_model_long_name
 from codetechnician.file_selector import retrieve_relevant_files, FileSelectorResponse, FileSelection, MalformedResponse, FileRelativePath # type: ignore
 from codetechnician.ai_clients import Clients, initialise_ai_clients
 
@@ -134,13 +134,6 @@ def main(
         console.print("[red bold]Configuration file not found[/red bold]")
         sys.exit(1)
 
-    model_mapping: dict[str, str] = {
-        "opus": constants.opus,
-        "sonnet": constants.sonnet,
-        "haiku": constants.haiku,
-        "gpt-4o": constants.gpt_4o,
-    }
-
     config["non_interactive"] = False
 
     # Do not emit markdown in non-interactive mode, as ctrl character formatting interferes in several contexts including json output.
@@ -152,13 +145,14 @@ def main(
     # If the config specifies a model and the command line parameters do not specify a model, then
     # use the one from the config file.
     if model:
+        model_long_optional = get_model_long_name(model)
+
         # First check whether the provided model is valid
-        if model not in model_mapping:
+        if model_long_optional is None:
             console.print(f"[red bold]Invalid model: {model}[/red bold]")
             sys.exit(1)
         else:
-            model_long: str = model_mapping.get(model.lower(), model)
-            config["model"] = model_long
+            config["model"] = model_long_optional
     elif "model" not in config:
         config["model"] = constants.gpt_4o
 

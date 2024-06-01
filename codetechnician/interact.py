@@ -478,7 +478,11 @@ def main_loop(
         elif isinstance(action, UpdateCommand):
             console.print("Updating not yet implemented.")
             continue
-        elif isinstance(action, Message) or isinstance(action, OutputCommand):
+        elif isinstance(action, Message) or isinstance(action, OutputCommand) or isinstance(action, ModelInstruction):
+            if isinstance(action, ModelInstruction):
+                if action.message is None:
+                    continue
+
             user_message = action.message
             
             message_result = message_ai_no_codebase(clients, state.main_model, state.conversation_history, system_prompt_general, user_message)
