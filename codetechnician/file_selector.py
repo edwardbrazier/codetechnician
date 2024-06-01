@@ -16,6 +16,7 @@ from codetechnician.anthropic_interface import setup_client, prompt_ai
 from codetechnician.load import load_codebase_xml_
 from codetechnician.constants import haiku
 from codetechnician.ai_response import UsageInfo, ChatResponse
+from codetechnician.printing import console
 
 FileRelativePath = NewType("FileRelativePath", str)
 
@@ -45,6 +46,9 @@ RAG_SYSTEM_PROMPT = """Output only JSON, in this format:
     "./archives/archive.zip"
   ]
 }"""
+
+def get_message_list_size(messages: ConversationHistory) -> int:
+    return sum([len(message["content"]) for message in messages])
 
 def retrieve_relevant_files(codebases: List[Codebase],  # type: ignore
                             user_message: str,
@@ -85,10 +89,15 @@ def retrieve_relevant_files(codebases: List[Codebase],  # type: ignore
             """
             }
         ]
+    
+    message_list_size = get_message_list_size(messages)
+
+    console.print(f"Message list size for file selector is: {message_list_size/1024:.2f} KB")
 
     response: Optional[ChatResponse] = prompt_ai(client, model, messages, RAG_SYSTEM_PROMPT)
 
     if response is None:
+        console.print("No response from the AI")
         return MalformedResponse()
     
     json_data = response.content_string.strip()
@@ -99,8 +108,10 @@ def retrieve_relevant_files(codebases: List[Codebase],  # type: ignore
             return FileSelection(files=parse_output, usage_data=response.usage)
         else:
             assert isinstance(parse_output, MalformedResponse)
+            console.print(f"Malformed response failed parsing:\n{json_data}")
             return parse_output
     else:
+        console.print(f"Malformed response failed schema validation:\n{json_data}")
         return MalformedResponse()
 
 
@@ -128,6 +139,7 @@ def validate_json_schema(json_data: str) -> bool:
     try:
         data = json.loads(json_data)
         validate(data, schema)
+        console.print(f"Passed validation:\n{json_data}")
         return True
     except (json.JSONDecodeError, ValidationError):
         return False

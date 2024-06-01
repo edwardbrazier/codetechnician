@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 # import sys
 
 from prompt_toolkit import HTML, PromptSession
-from typing import Callable, Optional, Union
+from typing import Callable, NamedTuple, Optional, Union
 
 from codetechnician.printing import print_markdown, console
 from codetechnician.constants import (
@@ -78,7 +78,17 @@ class AIError:
     """
     error_text: str
 
-MessageResult = Union[ChatResponse, AIError]
+class ChatResponseWithNewMessages(NamedTuple):
+    """
+    Represents the response from the AI for a chat prompt.
+    Also includes the messages to add to the message history.
+    """
+
+    content_string: str
+    usage: UsageInfo
+    new_messages: ConversationHistory
+
+MessageResult = Union[ChatResponseWithNewMessages, AIError]
 
 @dataclass
 class MessageResultWithFileSelection:
@@ -228,8 +238,7 @@ def message_ai_no_codebase(
     Messages the AI, gets the result and gets the cost estimate.
     This is a wrapper around the prompt_ai() functions in anthropic_interface and openai_interface,
     but this method selects the relevant client based on the model name.
-
-    Leaves printing the result to the console to the calling method.
+    Prints results to the console.
     """
     assert isinstance(clients, ai_clients.Clients)
     assert isinstance(model, str)
@@ -245,10 +254,9 @@ def message_ai_no_codebase(
         return AIError(f"No client available for model {model}.")
     else:
         client = client_optional
+        full_user_message = {"role": "user", "content": user_message}
 
-        messages = conversation_history + [
-                {"role": "user", "content": user_message}
-            ]
+        messages = conversation_history + [full_user_message]
 
         if isinstance(client, anthropic.Client):
             chat_response_optional = anthropic_interface.prompt_ai(client, model, messages, system_prompt_general) 
@@ -260,7 +268,13 @@ def message_ai_no_codebase(
     if chat_response_optional is None:
         return AIError(f"No response received from the AI.")
     else:
-        return chat_response_optional
+        print_chat_response(chat_response_optional)
+
+        new_messages: ConversationHistory = [
+            full_user_message,
+            {"role": "assistant", "content": chat_response_optional.content_string},
+        ]
+        return ChatResponseWithNewMessages(chat_response_optional.content_string, chat_response_optional.usage, new_messages)
 
 def message_ai_including_file_selection(
         clients: ai_clients.Clients,
@@ -643,18 +657,22 @@ def main_loop(
 
             user_message = action.message
             
-            # message_result = message_ai_no_codebase(clients, state.main_model, state.conversation_history, system_prompt_general, user_message)
-
-            message_result = message_ai_including_file_selection(\
-                clients, state.main_model, state.conversation_history, \
-                    system_prompt_general, user_message, codebases, state.codebase_contents, state.loaded_files, file_extensions)
+            if len(codebases) == 0: 
+                message_result = message_ai_no_codebase(clients, state.main_model, state.conversation_history, system_prompt_general, user_message)
+            else:
+                message_result = message_ai_including_file_selection(\
+                    clients, state.main_model, state.conversation_history, \
+                        system_prompt_general, user_message, codebases, state.codebase_contents, state.loaded_files, file_extensions)
 
             if isinstance(message_result, AIError):
                 console.print(message_result.error_text)
                 continue
 
-            assert isinstance(message_result, MessageResultWithFileSelection)
+            if isinstance(message_result, ChatResponseWithNewMessages):
+                state.conversation_history += message_result.new_messages
+                state.cumulative_cost += calculate_cost(message_result.usage)
 
-            state.loaded_files = message_result.all_files_loaded_in_conversation
-            state.cumulative_cost += message_result.cost
-            state.conversation_history += message_result.new_messages
+            if isinstance(message_result, MessageResultWithFileSelection):
+                state.loaded_files = message_result.all_files_loaded_in_conversation
+                state.cumulative_cost += message_result.cost
+                state.conversation_history += message_result.new_messages
