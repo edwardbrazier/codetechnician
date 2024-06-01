@@ -145,7 +145,9 @@ def parse_json_response(json_data: str) -> Union[list[FileRelativePath], Malform
     """
     try:
         data = json.loads(json_data)
-        file_paths = [FileRelativePath(path) for path in data["files"]]
+        # Format the file paths so that they don't differ in e.g. preceding '.'
+        file_paths = [FileRelativePath(os.path.normpath(path)) for path in data["files"]]
+
         return file_paths
     except (json.JSONDecodeError, KeyError):
         return MalformedResponse()

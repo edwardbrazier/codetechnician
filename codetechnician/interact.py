@@ -288,8 +288,8 @@ def message_ai_including_file_selection(
     # Select files
     file_selection_outcome = apply_file_selector(clients, codebases, codebase_contents, conversation_history, loaded_files, user_message)
 
-    if isinstance(file_selection_outcome, MalformedResponse):
-        return AIError(f"Malformed response from file selector AI.")
+    if not isinstance(file_selection_outcome, FileSelection):
+        return AIError(f"AI Error: Malformed response from file selector AI.")
 
     assert isinstance(file_selection_outcome, FileSelection)
 
@@ -406,7 +406,6 @@ def apply_file_selector(
     selector_response: FileSelectorResponse = retrieve_relevant_files(codebases, user_message, conversation_history)  # type: ignore
 
     if isinstance(selector_response, MalformedResponse):
-        console.print("Malformed response from file selector AI.")
         return MalformedResponse
     else:
         assert isinstance(selector_response, FileSelection)
